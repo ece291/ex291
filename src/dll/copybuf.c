@@ -16,7 +16,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: copybuf.c,v 1.4 2001/03/19 09:32:49 pete Exp $
+   $Id: copybuf.c,v 1.5 2001/03/30 02:12:20 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -36,7 +36,7 @@ VOID Copy32To24 (PVOID src, PVOID dest, int width, int height)
 
 VOID Copy32To24_pitched(PVOID src, PVOID dest, int pitch, int width, int height, int left, int top)
 {
-    int si = top*pitch;
+    int si = top*pitch+left*4;
     int di = 0;
     int i, j;
 
@@ -52,7 +52,7 @@ VOID Copy32To24_pitched(PVOID src, PVOID dest, int pitch, int width, int height,
 
 VOID Copy24To32_pitched(PVOID src, PVOID dest, int pitch, int width, int height, int left, int top)
 {
-    int si = top*pitch;
+    int si = top*pitch+left*3;
     int di = 0;
     int i, j;
 
