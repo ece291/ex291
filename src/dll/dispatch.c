@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: dispatch.c,v 1.9 2001/04/03 04:57:41 pete Exp $
+   $Id: dispatch.c,v 1.10 2001/04/07 08:04:15 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -70,20 +70,18 @@ VOID Extra291Dispatch(VOID)
 {
     unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
     unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 12);
-    unsigned int *pNameLenSP = (unsigned int *)(programStack + getEBP() + 16);
 
     unsigned int Socket = *SocketSP;
     PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + *pNameSP);
-    int *pNameLen = (int *)(programData + *pNameLenSP);
 
     struct sockaddr_in in_Name;
-    unsigned int retval;
+    unsigned int retval = sizeof(struct sockaddr_in);
 
     in_Name.sin_family = AF_INET;
     in_Name.sin_port = pName->Port;
     in_Name.sin_addr.s_addr = pName->Address;
 
-    retval = accept(Socket, (struct sockaddr *)&in_Name, pNameLen);
+    retval = accept(Socket, (struct sockaddr *)&in_Name, &retval);
 
     if(retval == INVALID_SOCKET) {
 	setEAX(0xFFFFFFFF);
@@ -100,11 +98,9 @@ VOID Extra291Dispatch(VOID)
 {
     unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
     unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 12);
-    int *NameLenSP = (int *)(programStack + getEBP() + 16);
 
     unsigned int Socket = *SocketSP;
     PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + *pNameSP);
-    int NameLen = *NameLenSP;
 
     struct sockaddr_in in_Name;
     int retval;
@@ -113,7 +109,8 @@ VOID Extra291Dispatch(VOID)
     in_Name.sin_port = pName->Port;
     in_Name.sin_addr.s_addr = pName->Address;
 
-    retval = bind(Socket, (const struct sockaddr *)&in_Name, NameLen);
+    retval = bind(Socket, (const struct sockaddr *)&in_Name,
+	sizeof(struct sockaddr_in));
 
     if(retval != 0) {
 	setEAX(1);
@@ -145,11 +142,9 @@ VOID Extra291Dispatch(VOID)
 {
     unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
     unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 12);
-    int *NameLenSP = (int *)(programStack + getEBP() + 16);
 
     unsigned int Socket = *SocketSP;
     PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + *pNameSP);
-    int NameLen = *NameLenSP;
 
     struct sockaddr_in in_Name;
     int retval;
@@ -158,7 +153,8 @@ VOID Extra291Dispatch(VOID)
     in_Name.sin_port = pName->Port;
     in_Name.sin_addr.s_addr = pName->Address;
 
-    retval = connect(Socket, (const struct sockaddr *)&in_Name, NameLen);
+    retval = connect(Socket, (const struct sockaddr *)&in_Name,
+	sizeof(struct sockaddr_in));
 
     if(retval != 0) {
 	setEAX(1);
@@ -173,20 +169,18 @@ VOID Extra291Dispatch(VOID)
 {
     unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
     unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 12);
-    unsigned int *pNameLenSP = (unsigned int *)(programStack + getEBP() + 16);
 
     unsigned int Socket = *SocketSP;
     PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + *pNameSP);
-    int *pNameLen = (int *)(programData + *pNameLenSP);
 
     struct sockaddr_in in_Name;
-    int retval;
+    int retval = sizeof(struct sockaddr_in);
 
     in_Name.sin_family = AF_INET;
     in_Name.sin_port = pName->Port;
     in_Name.sin_addr.s_addr = pName->Address;
 
-    retval = getpeername(Socket, (struct sockaddr *)&in_Name, pNameLen);
+    retval = getpeername(Socket, (struct sockaddr *)&in_Name, &retval);
 
     if(retval != 0) {
 	setEAX(1);
@@ -203,20 +197,18 @@ VOID Extra291Dispatch(VOID)
 {
     unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
     unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 12);
-    unsigned int *pNameLenSP = (unsigned int *)(programStack + getEBP() + 16);
 
     unsigned int Socket = *SocketSP;
     PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + *pNameSP);
-    int *pNameLen = (int *)(programData + *pNameLenSP);
 
     struct sockaddr_in in_Name;
-    int retval;
+    int retval = sizeof(struct sockaddr_in);
 
     in_Name.sin_family = AF_INET;
     in_Name.sin_port = pName->Port;
     in_Name.sin_addr.s_addr = pName->Address;
 
-    retval = getsockname(Socket, (struct sockaddr *)&in_Name, pNameLen);
+    retval = getsockname(Socket, (struct sockaddr *)&in_Name, &retval);
 
     if(retval != 0) {
 	setEAX(1);
@@ -322,18 +314,16 @@ VOID Extra291Dispatch(VOID)
     int *MaxLenSP = (int *)(programStack + getEBP() + 16);
     unsigned int *FlagsSP = (unsigned int *)(programStack + getEBP() + 20);
     unsigned int *pFromSP = (unsigned int *)(programStack + getEBP() + 24);
-    unsigned int *pFromLenSP = (unsigned int *)(programStack + getEBP() + 28);
 
     unsigned int Socket = *SocketSP;
     unsigned char *pBuf = (unsigned char *)(programData + *pBufSP);
     int MaxLen = *MaxLenSP;
     unsigned int Flags = *FlagsSP;
     PMODELIB_SOCKADDR *pFrom = (PMODELIB_SOCKADDR *)(programData + *pFromSP);
-    int *pFromLen = (int *)(programData + *pFromLenSP);
 
     int actflags = 0;
     struct sockaddr_in in_From;
-    int retval;
+    int retval = sizeof(struct sockaddr_in);
 
     if(Flags & 0x01)
 	actflags |= MSG_PEEK;
@@ -345,7 +335,7 @@ VOID Extra291Dispatch(VOID)
     in_From.sin_addr.s_addr = pFrom->Address;
 
     retval = recvfrom(Socket, pBuf, MaxLen, actflags,
-	(struct sockaddr *)&in_From, pFromLen);
+	(struct sockaddr *)&in_From, &retval);
 
     if(retval < 0) {
 	setEAX(0xFFFFFFFF);
@@ -394,14 +384,12 @@ VOID Extra291Dispatch(VOID)
     int *LenSP = (int *)(programStack + getEBP() + 16);
     unsigned int *FlagsSP = (unsigned int *)(programStack + getEBP() + 20);
     unsigned int *pToSP = (unsigned int *)(programStack + getEBP() + 24);
-    int *ToLenSP = (int *)(programStack + getEBP() + 28);
 
     unsigned int Socket = *SocketSP;
     unsigned char *pBuf = (unsigned char *)(programData + *pBufSP);
     int Len = *LenSP;
     unsigned int Flags = *FlagsSP;
     PMODELIB_SOCKADDR *pTo = (PMODELIB_SOCKADDR *)(programData + *pToSP);
-    int ToLen = *ToLenSP;
 
     int actflags = 0;
     struct sockaddr_in in_To;
@@ -415,7 +403,7 @@ VOID Extra291Dispatch(VOID)
     in_To.sin_addr.s_addr = pTo->Address;
 
     retval = sendto(Socket, pBuf, Len, actflags,
-	(const struct sockaddr *)&in_To, ToLen);
+	(const struct sockaddr *)&in_To, sizeof(struct sockaddr_in));
 
     if(retval < 0) {
 	setEAX(0xFFFFFFFF);
