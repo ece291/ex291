@@ -1,7 +1,7 @@
 # Makefile for EX291 DOS driver and test program
 #  By Peter Johnson, 2000
 #
-# $Id: Makefile,v 1.2 2000/12/18 06:28:00 pete Exp $
+# $Id: Makefile,v 1.3 2001/01/09 22:36:26 pete Exp $
 
 ifndef PMODELIB
 all:
@@ -11,7 +11,7 @@ all:
 else
 TARGETDIR = ../../bin
 
-TARGETS = $(TARGETDIR)/ex291.com $(TARGETDIR)/ex291w.com $(TARGETDIR)/test.exe
+TARGETS = $(TARGETDIR)/ex291.com $(TARGETDIR)/test.exe
 
 all: $(TARGETS)
 
@@ -20,9 +20,6 @@ clean:
 
 $(TARGETDIR)/ex291.com: extra291.asm
 	nasm -f bin $< -o $@
-
-$(TARGETDIR)/ex291w.com: extra291.asm
-	nasm -f bin -DWINDOWEDMODE $< -o $@
 
 %.o: %.asm
 	nasm -f coff -i$(PMODELIB)/include/ $<
