@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: dispatch.c,v 1.5 2001/03/19 09:32:49 pete Exp $
+   $Id: dispatch.c,v 1.6 2001/03/19 16:26:51 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -124,12 +124,29 @@ VOID Extra291Dispatch(VOID)
 }
 	case VBEAF_SET_CURSOR_POS:
 {
-    setCF(1);
+    USHORT data_sel = getFS();
+    ULONG data_off = getESI();
+    DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
+    	VDM_PM);
+
+    SetMousePosition((USHORT)data->i[0], (USHORT)data->i[1]);
+
+    VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
     break;
 }
 	case VBEAF_SHOW_CURSOR:
 {
-    setCF(1);
+    USHORT data_sel = getFS();
+    ULONG data_off = getESI();
+    DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
+    	VDM_PM);
+
+    if(data->i[0])
+	ShowMouse();
+    else
+	HideMouse();
+
+    VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
     break;
 }
 	case GET_MEMORY:
