@@ -49,19 +49,17 @@ Function 6002h [VBE/AF Driver] - Get Mode List
       i[7] = reserved field position (for >8 BPP)
   Bugs:
 
-Function 6003h [VBE/AF Driver] - Set Mode
+Function 6003h [VBE/AF Driver] - Set Mode Parameters
   Description:
-    Sets active video mode.
+    Sets active video mode parameters.
   Inputs:
     i[0] = width
     i[1] = height
     i[2] = bits per pixel
-    i[3] = emulated mode (1=emulated, 0=not emulated)
   Outputs:
   Notes:
-    If this function is called, the driver will ignore any non-VBE/AF-driver
-    mode sets.  This is for backwards compatibility with the old DOS interface.
-    Emulation is only supported for truecolor (24 or 32 bit) modes.
+    This sets the mode parameters.  To actually set the mode, the non-VBE/AF
+    driver Set Mode function must be called.
   Bugs:
 
 Function 6004h [VBE/AF Driver] - Set Palette
