@@ -1,7 +1,7 @@
 ; Callback implementations
 ; Copyright (C) 2001 Peter Johnson
 ;
-; $Id: callback.asm,v 1.1 2001/03/19 01:09:31 pete Exp $
+; $Id: callback.asm,v 1.2 2001/12/11 08:17:29 pete Exp $
 %include "../dos/nasm_bop.inc"
 
 	BITS	32
@@ -86,6 +86,18 @@ _mode_callback
 	push	ds
 	push	fs
 	push	esi
+
+	; Windows XP bug workaround: ES can be 0, when it should be set!
+	; Luckily, FS is set to the same selector ES should be set to by our
+	; own code in DispatchCallRM and InitDriver (in driver.c) (which is
+	; our DS, because we put the RMCB registers in our DS, and set FS to
+	; our DS).
+	mov	ax, es
+	test	ax, ax
+	jnz	.noxphack
+	mov	ax, fs
+	mov	es, ax
+.noxphack:
 
 	; Get original ds from DPMI regs structure
 	mov	ds, [es:edi+24h]
