@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mywindow.c,v 1.2 2000/12/18 06:28:00 pete Exp $
+   $Id: mywindow.c,v 1.3 2001/01/10 04:19:08 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -153,6 +153,9 @@ DWORD WINAPI MyWndThread(LPVOID lpParameter)
 
 LONG APIENTRY MyWndProc(HWND hWnd, UINT message, UINT wParam, LONG lParam)
 {
+	RECT r;
+	PAINTSTRUCT ps;
+
 	switch(message)
 	{
 	// Keyboard Handling
@@ -194,6 +197,14 @@ LONG APIENTRY MyWndProc(HWND hWnd, UINT message, UINT wParam, LONG lParam)
 	case WM_MBUTTONUP:
 		DoMouseCallback(0x40, wParam, LOWORD(lParam), HIWORD(lParam));
 		return 0;
+
+	// Repaint handling
+	case WM_PAINT:
+		if(GetUpdateRect(hWnd, &r, FALSE)) {
+			BeginPaint(hWnd, &ps);
+			DDraw_RefreshScreen();	// FIXME: only update needed
+			EndPaint(hWnd, &ps);
+		}
 	}
 	return (DefWindowProc(hWnd, message, wParam, lParam));
 }
