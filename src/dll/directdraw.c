@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: directdraw.c,v 1.12 2001/04/11 19:12:49 pete Exp $
+   $Id: directdraw.c,v 1.13 2001/04/25 04:08:02 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -581,6 +581,10 @@ VOID VBEAF_BitBltSys(DISPATCH_DATA *data)
     ddsd.ddpfPixelFormat.dwBBitMask = 0x0000FF;
 
     source = VdmMapFlat(data->seg[0], data->off[0], VDM_PM);
+    if(IsBadReadPtr(source, data->i[0]*data->i[4])) {
+	setCF(1);
+	return;
+    }
 
     if (samePixelFormat) {
 	ddsd.lPitch = data->i[0];
