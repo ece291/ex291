@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mywindow.c,v 1.12 2001/03/20 03:33:43 pete Exp $
+   $Id: mywindow.c,v 1.13 2001/03/20 03:40:31 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -115,7 +115,7 @@ DWORD WINAPI MyWndThread(LPVOID lpParameter)
 	windowRect.bottom = 100 + windowHeight - 1;
 	AdjustWindowRect(&windowRect, WS_OVERLAPPED | WS_CAPTION, FALSE);
 
-	hWnd = CreateWindowEx(WS_EX_TOPMOST,
+	hWnd = CreateWindowEx(0,
 	    "ECE291Render",
 	    "ECE 291 Graphics Driver Display",
 	    WS_OVERLAPPED | WS_CAPTION,
@@ -128,7 +128,7 @@ DWORD WINAPI MyWndThread(LPVOID lpParameter)
 	    GetInstance(),
 	    NULL);
     } else {
-	hWnd = CreateWindowEx(WS_EX_TOPMOST,
+	hWnd = CreateWindowEx(0,
 	    "ECE291Render",
 	    "ECE 291 Graphics Driver Display",
 	    //WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
