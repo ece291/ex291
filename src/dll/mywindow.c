@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mywindow.c,v 1.10 2001/03/19 17:20:24 pete Exp $
+   $Id: mywindow.c,v 1.11 2001/03/19 17:23:57 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -195,9 +195,12 @@ LONG APIENTRY MyWndProc(HWND hWnd, UINT message, UINT wParam, LONG lParam)
 
 	// Mouse Handling
 	case WM_SETCURSOR:
-	    if(MouseHidden)
+	    if(MouseHidden) {
 		SetCursor(0);
-	    return 0;
+		return 0;
+	    } else {
+		break;
+	    }
 	case WM_MOUSEMOVE:
 	    DoMouseCallback(0x01, wParam, LOWORD(lParam), HIWORD(lParam));
 	    break;
