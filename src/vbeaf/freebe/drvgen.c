@@ -57,7 +57,7 @@ int main(int argc, char **argv)
       strcat(command,argv[i]);
       strcat(command," ");
     }
-    strcat(command,"-T ../drv.ld");
+    strcat(command,"-T freebe/drv.ld");
 
     printf("%s\n",command);
     i = system(command);
