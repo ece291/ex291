@@ -1,7 +1,7 @@
 # Sources for EX291 VDD
 #  By Peter Johnson, 2000
 #
-# $Id: SOURCES,v 1.4 2001/04/03 04:17:36 pete Exp $
+# $Id: SOURCES,v 1.5 2001/04/03 04:57:41 pete Exp $
 
 TARGETNAME=ex291srv
 TARGETPATH=.\objfre
@@ -30,6 +30,7 @@ SOURCES = directdraw.c   \
           dispatch.c     \
 	  keyboard.c     \
 	  mouse.c	 \
+	  mysockets.c    \
 	  deque.c        \
 	  filelog.c      \
           ex291srv.c     \

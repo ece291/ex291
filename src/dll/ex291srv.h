@@ -16,7 +16,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: ex291srv.h,v 1.7 2001/04/03 04:17:36 pete Exp $
+   $Id: ex291srv.h,v 1.8 2001/04/03 04:57:41 pete Exp $
 */
 
 #ifndef __ex291srv_h
@@ -93,6 +93,9 @@
 #define MOUSE_DEFINE_UPDATE_REGION		0x7020
 
 HINSTANCE GetInstance(VOID);
+
+BOOL	InitMySockets(unsigned int);
+VOID	CloseMySockets(VOID);
 
 BOOL	InitDirectDraw(VOID);
 VOID	CloseDirectDraw(VOID);

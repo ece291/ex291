@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: dispatch.c,v 1.8 2001/04/03 04:17:36 pete Exp $
+   $Id: dispatch.c,v 1.9 2001/04/03 04:57:41 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -42,12 +42,11 @@ int VBEAF_width = 0;
 int VBEAF_height = 0;
 int VBEAF_depth = 0;
 
-static USHORT programDataSel;
-static PBYTE programData = 0;
-static USHORT programStackSel;
-static PBYTE programStack = 0;
-static int *SocketLastError = 0;
-static PMODELIB_SOCKINITDATA *SocketSettings;
+extern USHORT programDataSel;
+extern PBYTE programData;
+extern USHORT programStackSel;
+extern PBYTE programStack;
+extern PMODELIB_SOCKINITDATA *SocketSettings;
 
 VOID Extra291Dispatch(VOID)
 {
@@ -56,26 +55,15 @@ VOID Extra291Dispatch(VOID)
     switch (regAX) {
 	case SOCKET_INIT:
 {
-    programDataSel = getDS();
-    programData = (PBYTE) VdmMapFlat(programDataSel, 0, VDM_PM);
-    programStackSel = getSS();
-    programStack = (PBYTE) VdmMapFlat(programStackSel, 0, VDM_PM);
-
-    SocketSettings = (PMODELIB_SOCKINITDATA *)(programData+getECX());
-    SocketSettings->LastError = (int *)(programData+
-	(unsigned int)SocketSettings->LastError);
-    SocketSettings->NetAddr_static = programData+
-	(unsigned int)SocketSettings->NetAddr_static;
-    SocketSettings->HostEnt_static = (PMODELIB_HOSTENT *)(programData+
-	(unsigned int)SocketSettings->HostEnt_static);
+    if(!InitMySockets(getECX()))
+	setCF(1);
+    else
+	setCF(0);
     break;
 }
 	case SOCKET_EXIT:
 {
-    VdmUnmapFlat(programDataSel, 0, programData, VDM_PM);
-    programData = 0;
-    VdmUnmapFlat(programStackSel, 0, programStack, VDM_PM);
-    programStack = 0;
+    CloseMySockets();
     break;
 }
 	case SOCKET_ACCEPT:
