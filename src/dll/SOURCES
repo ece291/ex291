@@ -1,0 +1,35 @@
+TARGETNAME=ex291srv
+TARGETPATH=.\objfre
+TARGETTYPE=DYNLINK
+
+TARGETLIBS=$(DDK_LIB_PATH)\kernel32.lib	\
+	   $(DDK_LIB_PATH)\winmm.lib    \
+	   $(DDK_LIB_PATH)\ntvdm.lib 	\
+           $(DDK_LIB_PATH)\libcntpr.lib \
+           $(DDK_LIB_PATH)\user32.lib	\
+	   $(DDK_LIB_PATH)\gdi32.lib    \
+           $(DDK_LIB_PATH)\ddraw.lib	\
+	   $(DDK_LIB_PATH)\guids.lib    \
+	   $(DDK_LIB_PATH)\ole32.lib
+
+
+
+DLLENTRY=Extra291Initialize
+DLLBASE=0x2000000
+USE_CRTDLL=1
+
+SOURCES = directdraw.c   \
+	  copybuf.c      \
+	  mywindow.c     \
+          dispatch.c     \
+	  keyboard.c     \
+	  mouse.c	 \
+	  deque.c        \
+	  filelog.c      \
+          ex291srv.c     \
+          ex291srv.rc    
+
+INDENTED_DIRECTIVES=1
+
+C_DEFINES=-DWIN_32
+

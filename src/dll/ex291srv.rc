@@ -1,0 +1,57 @@
+/* ex291srv.rc -- info for driver builds		
+   from Art Baker's The Windows NT Device Driver Book		
+
+   Modified parts Copyright (C) 1999-2000 Wojciech Galazka
+   More modifications Copyright (C) 2000 Peter Johnson
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  */
+
+#include <windows.h>
+
+/*---------------------------------------------------*/
+/* Include default values for generic vendor info    */
+/*                                                   */
+/*---------------------------------------------------*/
+
+#include "author.h"
+
+/*---------------------------------------------------*/
+/* The following values should be modified only by   */
+/* the official builder, and they should be updated  */ 
+/* for each build                                    */
+/*---------------------------------------------------*/
+
+#define VER_PRODUCTBUILD	  	1
+#define VER_PRODUCTBUILD_STR	        "1"
+#define VER_PRODUCTVERSION_STR 		"0.1" " build " VER_PRODUCTBUILD_STR
+#define VER_PRODUCTVERSION	  	1,01,VER_PRODUCTBUILD,1
+#define VER_PRODUCTBETA_STR	  	VER_PRODUCTVERSION_STR
+
+/*---------------------------------------------------*/
+/* Include product-specific default values           */
+/*						     */
+/*---------------------------------------------------*/
+
+#define VER_PRODUCTNAME_STR		"Extra BIOS services for ECE 291, for Windows NT/2000"
+#define VER_FILETYPE			VFT_DRV
+#define VER_FILESUBTYPE			VFT2_UNKNOWN
+#define VER_FILEDESCRIPTION_STR		"Extra BIOS Services for ECE 291, for Windows NT/2000"
+#define VER_INTERNALNAME_STR		"ex291srv.dll"
+#define VER_ORIGINALFILENAME_STR	"ex291srv.dll"
+
+/*---------------------------------------------------*/
+/* Define the version resource itself                */
+/*						     */
+/*---------------------------------------------------*/
+#include <common.ver>
+#if !defined(USED_AS_C_HEADER)
+MAIN DIALOG 95, 134, 272, 173
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+STYLE DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "ECE 291 Input"
+BEGIN
+END
+#endif
+
