@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: directdraw.c,v 1.3 2001/03/19 08:45:28 pete Exp $
+   $Id: directdraw.c,v 1.4 2001/03/19 08:50:21 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -396,77 +396,48 @@ WORD DDraw_SetMode_Old(int width, int height, PVOID backbufmem)
 	if(DDraw_SetMode(width, height, 32))
 		return 0xFFFF;
 
+	memset(&ddsd, 0, sizeof(ddsd));
+	ddsd.dwSize = sizeof(ddsd);
+	ddsd.dwFlags = DDSD_WIDTH | DDSD_HEIGHT | DDSD_PITCH | DDSD_LPSURFACE |
+		DDSD_PIXELFORMAT;
+	ddsd.dwWidth = width;
+	ddsd.dwHeight = height;
+	ddsd.ddpfPixelFormat.dwSize = sizeof(DDPIXELFORMAT);
+	ddsd.ddpfPixelFormat.dwFlags = DDPF_RGB;
+	ddsd.ddpfPixelFormat.dwRBitMask = 0xFF0000;
+	ddsd.ddpfPixelFormat.dwGBitMask = 0x00FF00;
+	ddsd.ddpfPixelFormat.dwBBitMask = 0x0000FF;
+
 	// Create the backbuffer surface
 	if (samePixelFormat) {
-		memset(&ddsd, 0, sizeof(ddsd));
-		ddsd.dwSize = sizeof(ddsd);
-		ddsd.dwFlags = DDSD_WIDTH | DDSD_HEIGHT | DDSD_PITCH | DDSD_LPSURFACE |
-			DDSD_PIXELFORMAT;
-		ddsd.dwWidth = width;
-		ddsd.dwHeight = height;
 		ddsd.lPitch = width*4;
 		ddsd.lpSurface = backbufmem;
-		ddsd.ddpfPixelFormat.dwSize = sizeof(DDPIXELFORMAT);
-		ddsd.ddpfPixelFormat.dwFlags = DDPF_RGB;
 		ddsd.ddpfPixelFormat.dwRGBBitCount = 32;
-		ddsd.ddpfPixelFormat.dwRBitMask = 0xFF0000;
-		ddsd.ddpfPixelFormat.dwGBitMask = 0x00FF00;
-		ddsd.ddpfPixelFormat.dwBBitMask = 0x0000FF;
-//		LogMessage("Setting up back buffer surface");
-		hr = IDirectDrawSurface3_SetSurfaceDesc(pDDSBack, &ddsd, 0);
-		if(hr != DD_OK) {
-			switch(hr) {
-			case DDERR_INVALIDPARAMS: LogMessage("InvalidParams"); break;
-			case DDERR_INVALIDOBJECT: LogMessage("InvalidObject"); break;
-			case DDERR_SURFACELOST: LogMessage("SurfaceLost"); break;
-			case DDERR_SURFACEBUSY: LogMessage("SurfaceBusy"); break;
-			case DDERR_INVALIDSURFACETYPE: LogMessage("InvalidSurfaceType");
-				break;
-			case DDERR_INVALIDPIXELFORMAT: LogMessage("InvalidPixelFormat");
-				break;
-			case DDERR_INVALIDCAPS: LogMessage("InvalidCaps"); break;
-			case DDERR_UNSUPPORTED: LogMessage("Unsupported"); break;
-			case DDERR_GENERIC: LogMessage("Generic"); break;
-			}
-			return 0xFFFF;
-		}
-
 	} else {
 		BackBuf32 = backbufmem;
 
-		memset(&ddsd, 0, sizeof(ddsd));
-		ddsd.dwSize = sizeof(ddsd);
-		ddsd.dwFlags = DDSD_WIDTH | DDSD_HEIGHT | DDSD_PITCH | DDSD_LPSURFACE |
-			DDSD_PIXELFORMAT;
-		ddsd.dwWidth = width;
-		ddsd.dwHeight = height;
 		ddsd.lPitch = width*3;
 		ddsd.lpSurface = BackBuf24;
-		ddsd.ddpfPixelFormat.dwSize = sizeof(DDPIXELFORMAT);
-		ddsd.ddpfPixelFormat.dwFlags = DDPF_RGB;
 		ddsd.ddpfPixelFormat.dwRGBBitCount = 24;
-		ddsd.ddpfPixelFormat.dwRBitMask = 0xFF0000;
-		ddsd.ddpfPixelFormat.dwGBitMask = 0x00FF00;
-		ddsd.ddpfPixelFormat.dwBBitMask = 0x0000FF;
-//		LogMessage("Setting up back buffer surface");
-		hr = IDirectDrawSurface3_SetSurfaceDesc(pDDSBack, &ddsd, 0);
-		if(hr != DD_OK) {
-			switch(hr) {
-			case DDERR_INVALIDPARAMS: LogMessage("InvalidParams"); break;
-			case DDERR_INVALIDOBJECT: LogMessage("InvalidObject"); break;
-			case DDERR_SURFACELOST: LogMessage("SurfaceLost"); break;
-			case DDERR_SURFACEBUSY: LogMessage("SurfaceBusy"); break;
-			case DDERR_INVALIDSURFACETYPE: LogMessage("InvalidSurfaceType");
-				break;
-			case DDERR_INVALIDPIXELFORMAT: LogMessage("InvalidPixelFormat");
-				break;
-			case DDERR_INVALIDCAPS: LogMessage("InvalidCaps"); break;
-			case DDERR_UNSUPPORTED: LogMessage("Unsupported"); break;
-			case DDERR_GENERIC: LogMessage("Generic"); break;
-			}
-			return 0xFFFF;
-		}
+	}
 
+//	LogMessage("Setting up back buffer surface");
+	hr = IDirectDrawSurface3_SetSurfaceDesc(pDDSBack, &ddsd, 0);
+	if(hr != DD_OK) {
+		switch(hr) {
+		case DDERR_INVALIDPARAMS: LogMessage("InvalidParams"); break;
+		case DDERR_INVALIDOBJECT: LogMessage("InvalidObject"); break;
+		case DDERR_SURFACELOST: LogMessage("SurfaceLost"); break;
+		case DDERR_SURFACEBUSY: LogMessage("SurfaceBusy"); break;
+		case DDERR_INVALIDSURFACETYPE: LogMessage("InvalidSurfaceType");
+			break;
+		case DDERR_INVALIDPIXELFORMAT: LogMessage("InvalidPixelFormat");
+			break;
+		case DDERR_INVALIDCAPS: LogMessage("InvalidCaps"); break;
+		case DDERR_UNSUPPORTED: LogMessage("Unsupported"); break;
+		case DDERR_GENERIC: LogMessage("Generic"); break;
+		}
+		return 0xFFFF;
 	}
 
 	return 0;
