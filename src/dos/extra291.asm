@@ -28,7 +28,7 @@
 ; Any calls will be first handled here, and then redirected to the DLL. Some
 ; calls need special processing in both the DLL and here.
 ;
-; $Id: extra291.asm,v 1.9 2001/03/23 21:32:05 pete Exp $
+; $Id: extra291.asm,v 1.10 2001/03/23 22:03:33 pete Exp $
 %include "nasm_bop.inc"
 
 ;; dispatch what, where
@@ -466,6 +466,44 @@ dllInitialize	db	'Extra291RegisterInit',0
 		db	13,10,'$'
 envString	db	0,'EX291'
 
+
+;----------------------------------------
+; InitScreen
+; Purpose: Initializes the screen
+; Inputs: None
+; Outputs: None
+;----------------------------------------
+InitScreen
+	push	ax
+	push	bx
+	push	cx
+	push	dx
+	push	es
+	push	di
+
+	mov	ax, 0B800h
+	mov	es, ax
+
+	; Clear screen
+	xor	di, di
+	mov	ax, 0700h
+	mov	cx, 80*100
+	rep	stosw
+
+	; Set cursor position to origin
+	mov	ah, 2
+	xor	bx, bx
+	xor	dx, dx
+	int	10h
+
+	pop	di
+	pop	es
+	pop	dx
+	pop	cx
+	pop	bx
+	pop	ax
+	ret
+
 ;----------------------------------------
 ; PrintStr
 ; Purpose: Prints a string to the screen.
@@ -811,6 +849,8 @@ Build_DLL_Name
 Do_TSR_Load
 	push	cs
 	pop	ds
+
+	call	InitScreen
 
 	mov	dx, VersionMsg
 	call	PrintStr
