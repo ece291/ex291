@@ -1,7 +1,7 @@
 ; Protected Mode EX291 Test
 ;  By Peter Johnson, 2000-2001
 ;
-; $Id: test.asm,v 1.6 2001/03/20 04:51:04 pete Exp $
+; $Id: test.asm,v 1.7 2001/03/23 01:01:16 pete Exp $
 %include "lib291.inc"
 
 	BITS 32
@@ -39,7 +39,8 @@ _main
 	invoke	_InitGraphics, dword _kbINT, dword _kbIRQ, dword _kbPort
 
 	invoke	_FindGraphicsMode, word 640, word 480, word 32, dword 1
-	push	eax
+	invoke	_SetGraphicsMode, ax
+
 	invoke	_LockArea, ds, dword _kbPort, dword 2
 	invoke	_LockArea, ds, dword _kbIRQ, dword 1
 	invoke	_LockArea, ds, dword CurrentKey, dword 1
@@ -47,8 +48,6 @@ _main
 	invoke	_LockArea, cs, dword KeyboardISR, dword KeyboardISR_end-KeyboardISR
 	movzx	eax, byte [_kbINT]
 	invoke	_Install_Int, eax, dword KeyboardISR
-	pop	eax
-	invoke	_SetGraphicsMode, ax
 
 	xor	eax, eax
 	int	33h
