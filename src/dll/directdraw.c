@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: directdraw.c,v 1.8 2001/03/19 19:09:18 pete Exp $
+   $Id: directdraw.c,v 1.9 2001/03/20 03:33:43 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -26,6 +26,7 @@
 static IDirectDraw3 *pDD3 = NULL;
 static IDirectDrawFactory *pDDF = NULL;
 static IDirectDrawSurface3 *pDDSPrimary = NULL;
+static IDirectDrawSurface3 *pDDSPrimarySave = NULL;
 static IDirectDrawSurface3 *pDDSBack = NULL;
 static RECT screenRect;
 static BOOL samePixelFormat = FALSE;
@@ -319,6 +320,22 @@ int DDraw_SetMode(int width, int height, int depth)
 	    IDirectDrawSurface3_Release(pDDSPrimary);
 	    return -1;
 	}
+
+	// create the save surface (for window redraws)
+	ddsd.dwFlags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH;
+	ddsd.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN;
+	ddsd.dwWidth = width;
+	ddsd.dwHeight = height;
+	hr = IDirectDraw3_CreateSurface(pDD3, &ddsd, &pSurface, NULL);
+	if(hr != DD_OK)
+	    return -1;
+
+	hr = IDirectDrawSurface_QueryInterface(pSurface,
+	    &IID_IDirectDrawSurface3, (LPVOID *)&pDDSPrimarySave);
+	if(hr != DD_OK)
+	    return -1;
+
+	IDirectDrawSurface_Release(pSurface);
     }
 
     // Create the backbuffer surface
@@ -541,6 +558,7 @@ int DDraw_BitBltSys(PVOID source, DISPATCH_DATA *data)
     ddsd.dwSize = sizeof(ddsd);
     ddsd.dwFlags = DDSD_WIDTH | DDSD_HEIGHT | DDSD_PITCH | DDSD_LPSURFACE |
 	DDSD_PIXELFORMAT;
+    ddsd.dwWidth = data->i[3];
     ddsd.dwHeight = data->i[4];
     ddsd.ddpfPixelFormat.dwSize = sizeof(DDPIXELFORMAT);
     ddsd.ddpfPixelFormat.dwFlags = DDPF_RGB;
@@ -549,16 +567,11 @@ int DDraw_BitBltSys(PVOID source, DISPATCH_DATA *data)
     ddsd.ddpfPixelFormat.dwBBitMask = 0x0000FF;
 
     if (samePixelFormat) {
-	srcRect.left = data->i[1];
-	srcRect.top = data->i[2];
-	ddsd.dwWidth = data->i[0]/(VBEAF_depth/8);
 	ddsd.lPitch = data->i[0];
-	ddsd.lpSurface = source;
+	ddsd.lpSurface = ((PBYTE)source)+data->i[2]*data->i[0]+
+	    data->i[1]*(VBEAF_depth/8);
 	ddsd.ddpfPixelFormat.dwRGBBitCount = VBEAF_depth;
     } else {
-	srcRect.left = 0;
-	srcRect.top = 0;
-	ddsd.dwWidth = data->i[3];
 	ddsd.lpSurface = BackBuf;
 	if(VBEAF_depth==24) {
 	    ddsd.lPitch = data->i[3]*4;
@@ -573,8 +586,11 @@ int DDraw_BitBltSys(PVOID source, DISPATCH_DATA *data)
 	}
     }
 
-    srcRect.right = srcRect.left + data->i[3];
-    srcRect.bottom = srcRect.top + data->i[4];
+    // calculate source rectangle
+    srcRect.left = 0;
+    srcRect.top = 0;
+    srcRect.right = data->i[3];
+    srcRect.bottom = data->i[4];
 
     // calculate destination rectangle
     destRect.left = data->i[5];
@@ -612,6 +628,22 @@ int DDraw_BitBltSys(PVOID source, DISPATCH_DATA *data)
 
 	hr = IDirectDrawSurface3_Blt(pDDSPrimary, &windowRect, pDDSBack,
 	    &srcRect, DDBLT_WAIT, NULL);
+	if(pDDSPrimarySave) {
+	    HRESULT hr2 = IDirectDrawSurface3_Blt(pDDSPrimarySave, &destRect,
+		pDDSBack, &srcRect, DDBLT_ASYNC, NULL);
+	    if(hr2 != DD_OK) {
+		switch(hr2) {
+		    case DDERR_GENERIC: LogMessage("Generic"); break;
+		    case DDERR_INVALIDCLIPLIST: LogMessage("InvalidClipList"); break;
+		    case DDERR_INVALIDOBJECT: LogMessage("InvalidObject"); break;
+		    case DDERR_INVALIDPARAMS: LogMessage("InvalidParams"); break;
+		    case DDERR_INVALIDRECT: LogMessage("InvalidRect"); break;
+		    case DDERR_NOBLTHW: LogMessage("NoBltHW"); break;
+		    case DDERR_UNSUPPORTED: LogMessage("Unsupported"); break;
+		    default: LogMessage("Other"); break;
+		}
+	    }
+	}
     } else {
 	hr = IDirectDrawSurface3_Blt(pDDSPrimary, &destRect, pDDSBack,
 	    &srcRect, DDBLT_WAIT, NULL);
@@ -631,5 +663,42 @@ int DDraw_BitBltSys(PVOID source, DISPATCH_DATA *data)
     }
 
     return 0;
+}
+
+VOID DDraw_UpdateWindow(RECT *r)
+{
+    HRESULT hr;
+    RECT srcRect;
+    POINT p;
+
+    if(!pDDSPrimary || !pDDSPrimarySave)
+	return;
+
+    r->right++;
+    r->bottom++;
+
+    p.x = 0; p.y = 0;
+    ClientToScreen(GetMyWindow(), &p);
+    srcRect = *r;
+    OffsetRect(r, p.x, p.y);
+
+    LogMessage("source rect: L=%d, T=%d, R=%d, B=%d", srcRect.left,
+	srcRect.top, srcRect.right, srcRect.bottom);
+    LogMessage("window rect: L=%d, T=%d, R=%d, B=%d", r->left, r->top,
+	r->right, r->bottom);
+    hr = IDirectDrawSurface3_Blt(pDDSPrimary, r, pDDSPrimarySave, &srcRect,
+	DDBLT_ASYNC, NULL);
+    if(hr != DD_OK) {
+	switch(hr) {
+	    case DDERR_GENERIC: LogMessage("Generic"); break;
+	    case DDERR_INVALIDCLIPLIST: LogMessage("InvalidClipList"); break;
+	    case DDERR_INVALIDOBJECT: LogMessage("InvalidObject"); break;
+	    case DDERR_INVALIDPARAMS: LogMessage("InvalidParams"); break;
+	    case DDERR_INVALIDRECT: LogMessage("InvalidRect"); break;
+	    case DDERR_NOBLTHW: LogMessage("NoBltHW"); break;
+	    case DDERR_UNSUPPORTED: LogMessage("Unsupported"); break;
+	    default: LogMessage("Other"); break;
+	}
+    }
 }
 

@@ -16,7 +16,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: ex291srv.h,v 1.3 2001/03/19 08:45:28 pete Exp $
+   $Id: ex291srv.h,v 1.4 2001/03/20 03:33:43 pete Exp $
 */
 
 #ifndef __ex291srv_h
@@ -107,6 +107,7 @@ WORD	DDraw_SetMode_Old(int, int, PVOID);
 WORD	DDraw_UnSetMode(VOID);
 VOID	DDraw_RefreshScreen(VOID);
 int	DDraw_BitBltSys(PVOID, DISPATCH_DATA *);
+VOID	DDraw_UpdateWindow(RECT *);
 
 BOOL	InitMyWindow(HINSTANCE, int, int);
 VOID	CloseMyWindow(VOID);

@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mywindow.c,v 1.11 2001/03/19 17:23:57 pete Exp $
+   $Id: mywindow.c,v 1.12 2001/03/20 03:33:43 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -30,6 +30,7 @@ static int windowWidth;
 static int windowHeight;
 
 extern PBYTE WindowedMode;
+extern BOOL usingVBEAF;
 extern BOOL MouseHidden;
 
 static BOOL WindowReady = FALSE;
@@ -226,11 +227,12 @@ LONG APIENTRY MyWndProc(HWND hWnd, UINT message, UINT wParam, LONG lParam)
 	// Repaint handling
 	case WM_PAINT:
 	    if(GetUpdateRect(hWnd, &r, FALSE)) {
-		BeginPaint(hWnd, &ps);
-		DDraw_RefreshScreen();	// FIXME: only update needed
-		EndPaint(hWnd, &ps);
+		if(usingVBEAF)
+		    DDraw_UpdateWindow(&r);
+		else
+		    DDraw_RefreshScreen();	// FIXME: only update needed
 	    }
-	    return 0;
+	    break;
 
 	// Keep track of whether we're active or not
 	case WM_ACTIVATEAPP:
