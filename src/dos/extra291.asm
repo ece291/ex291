@@ -28,7 +28,7 @@
 ; Any calls will be first handled here, and then redirected to the DLL. Some
 ; calls need special processing in both the DLL and here.
 ;
-; $Id: extra291.asm,v 1.10 2001/03/23 22:03:33 pete Exp $
+; $Id: extra291.asm,v 1.11 2001/03/25 02:04:43 pete Exp $
 %include "nasm_bop.inc"
 
 ;; dispatch what, where
@@ -475,32 +475,16 @@ envString	db	0,'EX291'
 ;----------------------------------------
 InitScreen
 	push	ax
-	push	bx
-	push	cx
-	push	dx
 	push	es
-	push	di
 
-	mov	ax, 0B800h
+	; Reset mode to current mode to clear screen
+	xor	ax, ax
 	mov	es, ax
-
-	; Clear screen
-	xor	di, di
-	mov	ax, 0700h
-	mov	cx, 80*100
-	rep	stosw
-
-	; Set cursor position to origin
-	mov	ah, 2
-	xor	bx, bx
-	xor	dx, dx
+	mov	al, [es:449h]		; 0000:0449 holds current video mode
+	xor	ah, ah
 	int	10h
 
-	pop	di
 	pop	es
-	pop	dx
-	pop	cx
-	pop	bx
 	pop	ax
 	ret
 
