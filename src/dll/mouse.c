@@ -15,18 +15,16 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mouse.c,v 1.2 2000/12/18 06:28:00 pete Exp $
+   $Id: mouse.c,v 1.3 2001/01/09 22:42:47 pete Exp $
 */
 
 #include "ex291srv.h"
-
-#define MOUSE_IRQ_LINE	4
-#define MOUSE_IRQ_PIC	ICA_SLAVE
 
 extern PBYTE inDispatch;
 extern PBYTE VDD_int_wait;
 extern PBYTE DOS_VDD_Mutex;
 extern PBYTE WindowedMode;
+extern PBYTE Mouse_IRQ;
 
 extern int BackBufWidth;
 extern int BackBufHeight;
@@ -39,6 +37,9 @@ static USHORT CallbackCursorColumn;
 static USHORT CallbackCursorRow;
 static HANDLE mouseMutex;
 
+static INT MouseIRQpic;
+static BYTE MouseIRQline;
+
 BOOL InitMouse(VOID)
 {
 	mouseMutex = CreateMutex(NULL, TRUE, NULL);
@@ -47,6 +48,14 @@ BOOL InitMouse(VOID)
 	ReleaseMutex(mouseMutex);
 
 	CallbackMask = 0;
+
+	if(*Mouse_IRQ < 8) {
+		MouseIRQpic = ICA_MASTER;
+		MouseIRQline = (INT)*Mouse_IRQ;
+	} else {
+		MouseIRQpic = ICA_SLAVE;
+		MouseIRQline = (INT)*Mouse_IRQ-8;
+	}
 
 //	LogMessage("Initialized mouse");
 
@@ -184,9 +193,9 @@ VOID DoMouseCallback(USHORT condition, UINT keys, USHORT column, USHORT row)
 			mutex_lock(DOS_VDD_Mutex);
 		}
 		mutex_unlock(DOS_VDD_Mutex);
-		//LogMessage("Simulate IRQ 12");
-		VDDSimulateInterrupt(MOUSE_IRQ_PIC, MOUSE_IRQ_LINE, 1);
-		//LogMessage("Done Simulate IRQ 12");
+		//LogMessage("Simulate Mouse IRQ");
+		VDDSimulateInterrupt(MouseIRQpic, MouseIRQline, 1);
+		//LogMessage("Done Simulate Mouse IRQ");
 		mutex_lock(DOS_VDD_Mutex);
 		*VDD_int_wait = 0;
 

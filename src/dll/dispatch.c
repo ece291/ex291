@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: dispatch.c,v 1.2 2000/12/18 06:28:00 pete Exp $
+   $Id: dispatch.c,v 1.3 2001/01/09 22:42:47 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -33,6 +33,9 @@ PBYTE inDispatch;
 PBYTE VDD_int_wait;
 PBYTE DOS_VDD_Mutex;
 PBYTE WindowedMode;
+PBYTE Mouse_IRQ;
+PBYTE Keyboard_IRQ;
+PWORD Keyboard_Port;
 
 VOID 	Extra291Dispatch(VOID)
 {
@@ -56,8 +59,14 @@ VOID 	Extra291Dispatch(VOID)
 	VDD_int_wait = inDispatch + 1;
 	DOS_VDD_Mutex = inDispatch + 2;
 	WindowedMode = inDispatch + 3;
+	Mouse_IRQ = inDispatch + 4;
+	Keyboard_IRQ = inDispatch + 5;
+	Keyboard_Port = (PWORD)(inDispatch + 6);
 
 	//LogMessage("Windowed Flag = %d", (int)*WindowedMode);
+	//LogMessage("Mouse IRQ = %d", (int)*Mouse_IRQ);
+	//LogMessage("Keyboard IRQ = %d", (int)*Keyboard_IRQ);
+	//LogMessage("Keyboard Port = %d", (int)*Keyboard_Port);
 
 /*	LogMessage("Segment=0x%x, Offset=0x%x", (unsigned int)inDispatchSegment,
 		inDispatchOffset);*/

@@ -15,29 +15,26 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: keyboard.c,v 1.2 2000/12/18 06:28:00 pete Exp $
+   $Id: keyboard.c,v 1.3 2001/01/09 22:42:47 pete Exp $
 */
 
 #include "ex291srv.h"
 #include "deque.h"
 
-//#define KB_IRQ	1
-//#define KB_PORT0	0x60
-//#define KB_PORT1	0x61
-
-#define KB_IRQ	7
-#define KB_PORT0	0x300
-#define KB_PORT1	0x300
-
 static queue keyQueue;
 static int lastKey = 0;
 static HANDLE keyMutex;
 
-static VDD_IO_PORTRANGE kbPorts = {KB_PORT0, KB_PORT1};
+static VDD_IO_PORTRANGE kbPorts = {0, 0};
 
 extern PBYTE inDispatch;
 extern PBYTE VDD_int_wait;
 extern PBYTE DOS_VDD_Mutex;
+extern PBYTE Keyboard_IRQ;
+extern PWORD Keyboard_Port;
+
+static INT KeyboardIRQpic;
+static BYTE KeyboardIRQline;
 
 BOOL InitKey(VOID)
 {
@@ -50,8 +47,17 @@ BOOL InitKey(VOID)
 	Q_Init(&keyQueue);
 	ReleaseMutex(keyMutex);
 
+	kbPorts.First = *Keyboard_Port; kbPorts.Last = *Keyboard_Port;
 	if(!VDDInstallIOHook(GetInstance(), 1, &kbPorts, &kbIOHandlers))
 		return FALSE;
+
+	if(*Keyboard_IRQ < 8) {
+		KeyboardIRQpic = ICA_MASTER;
+		KeyboardIRQline = (INT)*Keyboard_IRQ;
+	} else {
+		KeyboardIRQpic = ICA_SLAVE;
+		KeyboardIRQline = (INT)*Keyboard_IRQ-8;
+	}
 
 	//LogMessage("Initialized keyboard");
 
@@ -108,10 +114,9 @@ VOID AddKey(LONG key, BOOL Break)
 				mutex_lock(DOS_VDD_Mutex);
 			}
 			mutex_unlock(DOS_VDD_Mutex);
-			//LogMessage("trigger IRQ1");
-			//LogMessage("About to trigger keyboard");
-			VDDSimulateInterrupt(ICA_MASTER, KB_IRQ, 1);
-			//LogMessage("end trigger IRQ1");
+			//LogMessage("trigger keyboard IRQ");
+			VDDSimulateInterrupt(KeyboardIRQpic, KeyboardIRQline, 1);
+			//LogMessage("end trigger keyboard IRQ");
 			mutex_lock(DOS_VDD_Mutex);
 			*VDD_int_wait = 0;
 
@@ -150,22 +155,13 @@ int GetNextKey(VOID)
 
 VOID KeyInIO(WORD iport, BYTE *data)
 {
-	switch(iport) {
-	case KB_PORT0:
+	if(iport == kbPorts.First)
 		*data = (BYTE)GetNextKey();
-		break;
-	default:
+	else
 		*data = 0xFF;
-		break;
-	}
 }
 
 VOID KeyOutIO(WORD iport, BYTE data)
 {
-	switch(iport) {
-	case KB_PORT1:
-	default:
-		break;
-	}
 }
 
