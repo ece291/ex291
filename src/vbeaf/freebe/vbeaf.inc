@@ -13,7 +13,7 @@
 ;
 ; Converted to NASM by Peter Johnson, 2001.
 ;
-; $Id: vbeaf.inc,v 1.1 2001/02/28 22:34:11 pete Exp $
+; $Id: vbeaf.inc,v 1.2 2001/03/01 19:08:28 pete Exp $
 
 ; mode attribute flags
 afHaveMultiBuffer	equ	0001h	; multiple buffers
@@ -32,6 +32,45 @@ afHaveStereo		equ	1000h	; supports stereo LCD glasses
 afHaveROP2		equ	2000h	; supports ROP2 mix codes
 afHaveHWStereoSync	equ	4000h	; hardware stereo signalling
 afHaveEVCStereoSync	equ	8000h	; HW stereo sync via EVC connector
+
+; VBE/AF mode information structure
+	STRUC AF_MODE_INFO
+.Attributes		resw	1
+.XResolution		resw	1
+.YResolution		resw	1
+.BytesPerScanLine	resw	1
+.BitsPerPixel		resw	1
+.MaxBuffers		resw	1
+.RedMaskSize		resb	1
+.RedFieldPosition	resb	1
+.GreenMaskSize		resb	1
+.GreenFieldPosition	resb	1
+.BlueMaskSize		resb	1
+.BlueFieldPosition	resb	1
+.RsvdMaskSize		resb	1
+.RsvdFieldPosition	resb	1
+.MaxBytesPerScanLine	resw	1
+.MaxScanLineWidth	resw	1
+; VBE/AF 2.0 extensions
+.LinBytesPerScanLine	resw	1
+.BnkMaxBuffers		resb	1
+.LinMaxBuffers		resb	1
+.LinRedMaskSize		resb	1
+.LinRedFieldPosition	resb	1
+.LinGreenMaskSize	resb	1
+.LinGreenFieldPosition	resb	1
+.LinBlueMaskSize	resb	1
+.LinBlueFieldPosition	resb	1
+.LinRsvdMaskSize	resb	1
+.LinRsvdFieldPosition	resb	1
+.MaxPixelClock		resd	1
+.VideoCapabilities	resd	1
+.VideoMinXScale		resw	1
+.VideoMinYScale		resw	1
+.VideoMaxXScale		resw	1
+.VideoMaxYScale		resw	1
+.Reserved		resb	76
+	ENDSTRUC
 
 ; main VBE/AF driver structure
 	STRUC AF_DRIVER 
