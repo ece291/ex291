@@ -28,7 +28,7 @@
 ; Any calls will be first handled here, and then redirected to the DLL. Some
 ; calls need special processing in both the DLL and here.
 ;
-; $Id: extra291.asm,v 1.14 2001/03/29 23:19:33 pete Exp $
+; $Id: extra291.asm,v 1.15 2001/04/04 20:53:36 pete Exp $
 %include "nasm_bop.inc"
 
 ;; dispatch what, where
@@ -146,7 +146,7 @@ vesa_rev_string		db	'Revision 1.0',0
 
 ; Alternate Multiplexer data
 ALTMPX_Signature	db	'ECE291  ', 'EX291   ', 0
-ALTMPX_Version		db	0100h
+ALTMPX_Version		dw	0100h
 ALTMPX_Number		db	0
 ALTMPX_ChainedInterrupts
 	db 2Dh
