@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mouse.c,v 1.7 2001/03/19 17:04:32 pete Exp $
+   $Id: mouse.c,v 1.8 2001/04/11 19:12:49 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -43,6 +43,8 @@ static BYTE MouseIRQline;
 static BOOL MouseReady = FALSE;
 
 BOOL MouseHidden = FALSE;
+
+static VOID SetMousePosition(USHORT, USHORT);
 
 BOOL InitMouse(VOID)
 {
@@ -80,7 +82,7 @@ VOID CloseMouse(VOID)
     MouseReady = FALSE;
 }
 
-VOID ShowMouse(VOID)
+VOID Mouse_ShowCursor(VOID)
 {
     if(!MouseReady)
 	return;
@@ -90,7 +92,7 @@ VOID ShowMouse(VOID)
     MouseHidden = FALSE;
 }
 
-VOID HideMouse(VOID)
+VOID Mouse_HideCursor(VOID)
 {
     if(!MouseReady)
 	return;
@@ -100,19 +102,19 @@ VOID HideMouse(VOID)
     MouseHidden = TRUE;
 }
 
-VOID GetMousePosition(USHORT *button, USHORT *column, USHORT *row)
+VOID Mouse_GetPosition(VOID)
 {
     POINT point;
     USHORT bm;
 
     // Get cursor position
     if(!MouseReady || !GetCursorPos(&point)) {
-	*button = 0; *column = 0; *row = 0;
+	setBX(0); setCX(0); setDX(0);
 	return;
     }
 
-    *column = (USHORT)point.x;
-    *row = (USHORT)point.y;
+    setCX((USHORT)point.x);
+    setDX((USHORT)point.y);
 
     // Get button status
     bm = 0;
@@ -123,10 +125,10 @@ VOID GetMousePosition(USHORT *button, USHORT *column, USHORT *row)
     if (GetAsyncKeyState(VK_MBUTTON))
 	bm |= 0x04;
 
-    *button = bm;
+    setBX(bm);
 }
 
-VOID SetMousePosition(USHORT column, USHORT row)
+static VOID SetMousePosition(USHORT column, USHORT row)
 {
     if(!MouseReady)
 	return;
@@ -145,7 +147,7 @@ VOID SetMousePosition(USHORT column, USHORT row)
     SetCursorPos(column, row);
 }
 
-VOID SetHorizontalMouseRange(USHORT min, USHORT max)
+VOID Mouse_DefineHorizRange(VOID)
 {
     RECT rect;
 
@@ -158,12 +160,12 @@ VOID SetHorizontalMouseRange(USHORT min, USHORT max)
     if(*WindowedMode)
 	return;
 
-    rect.left = min;
-    rect.right = max;
+    rect.left = getCX();
+    rect.right = getDX();
     ClipCursor(&rect);
 }
 
-VOID SetVerticalMouseRange(USHORT min, USHORT max)
+VOID Mouse_DefineVertRange(VOID)
 {
     RECT rect;
 
@@ -176,17 +178,17 @@ VOID SetVerticalMouseRange(USHORT min, USHORT max)
     if(*WindowedMode) 
 	return;
 	
-    rect.top = min;
-    rect.bottom = max;
+    rect.top = getCX();
+    rect.bottom = getDX();
     ClipCursor(&rect);
 }
 
-VOID SetMouseCallbackMask(USHORT mask)
+VOID Mouse_SetCallbackParms(VOID)
 {
     if(!MouseReady)
 	return;
 
-    CallbackMask = mask;
+    CallbackMask = getCX();
 }
 
 VOID DoMouseCallback(USHORT condition, UINT keys, USHORT column, USHORT row)
@@ -243,23 +245,24 @@ VOID DoMouseCallback(USHORT condition, UINT keys, USHORT column, USHORT row)
     }
 }
 
-VOID GetCallbackInfo(USHORT *cond, USHORT *bstate, USHORT *col, USHORT *row)
+VOID Mouse_GetCallbackInfo(VOID)
 {
+    // we don't handle mickeys yet
+    setSI(0);
+    setDI(0);
+
     if(!MouseReady) {
-	*cond = 0;
-	*bstate = 0;
-	*col = 0;
-	*row = 0;
+	setAX(0); setBX(0); setCX(0); setDX(0);
 	return;
     }
 
     //LogMessage("GetCallbackInfo start");
     switch(WaitForSingleObject(mouseMutex, INFINITE)) {
 	case WAIT_OBJECT_0:
-	    *cond = CallbackCondition;
-	    *bstate = CallbackButtonState;
-	    *col = CallbackCursorColumn;
-	    *row = CallbackCursorRow;
+	    setAX(CallbackCondition);
+	    setBX(CallbackButtonState);
+	    setCX(CallbackCursorColumn);
+	    setDX(CallbackCursorRow);
 /*	    LogMessage("Got CallbackInfo: AX=%x BX=%x CX=%x DX=%x",
 		(int)CallbackCondition, (int)CallbackButtonState,
 		(int)CallbackCursorColumn, (int)CallbackCursorRow);*/
@@ -267,10 +270,79 @@ VOID GetCallbackInfo(USHORT *cond, USHORT *bstate, USHORT *col, USHORT *row)
 	    break;
 	case WAIT_TIMEOUT:
 	case WAIT_ABANDONED:
-	    *cond = 0;
-	    *bstate = 0;
-	    *col = 0;
-	    *row = 0;
+	    setAX(0); setBX(0); setCX(0); setDX(0);
     }
+}
+
+VOID Mouse_ResetDriver(VOID)
+{
+    // not needed
+}
+
+VOID Mouse_SetPosition(VOID)
+{
+    SetMousePosition(getCX(), getDX());
+}
+
+VOID Mouse_GetPressData(VOID)
+{
+    // not implemented: return 0
+    setAX(0); setBX(0); setCX(0); setDX(0);
+}
+
+VOID Mouse_GetReleaseData(VOID)
+{
+    // not implemented: return 0
+    setAX(0); setBX(0); setCX(0); setDX(0);
+}
+
+VOID Mouse_DefineGraphicsCursor(VOID)
+{
+    // not implemented
+}
+
+VOID Mouse_GetMotionCounters(VOID)
+{
+    // not implemented: return 0
+    setCX(0); setDX(0);
+}
+
+VOID Mouse_SetLightpenOn(VOID)
+{
+    // not implemented
+}
+
+VOID Mouse_SetLightpenOff(VOID)
+{
+    // not implemented
+}
+
+VOID Mouse_SetMickeyRatio(VOID)
+{
+    // not implemented
+}
+
+VOID Mouse_DefineUpdateRegion(VOID)
+{
+    // not implemented
+}
+
+VOID VBEAF_SetCursorShape(DISPATCH_DATA *data)
+{
+    // not implemented: return error
+    setCF(1);
+}
+
+VOID VBEAF_SetCursorPos(DISPATCH_DATA *data)
+{
+    SetMousePosition((USHORT)data->i[0], (USHORT)data->i[1]);
+}
+
+VOID VBEAF_ShowCursor(DISPATCH_DATA *data)
+{
+    if(data->i[0])
+	Mouse_ShowCursor();
+    else
+	Mouse_HideCursor();
 }
 

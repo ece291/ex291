@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: dispatch.c,v 1.12 2001/04/10 09:06:45 pete Exp $
+   $Id: dispatch.c,v 1.13 2001/04/11 19:12:49 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -42,639 +42,144 @@ int VBEAF_width = 0;
 int VBEAF_height = 0;
 int VBEAF_depth = 0;
 
-extern USHORT programDataSel;
-extern PBYTE programData;
-extern USHORT programStackSel;
 extern PBYTE programStack;
-extern PMODELIB_SOCKINITDATA *SocketSettings;
+
+static VOID VBEAF_SetMode(DISPATCH_DATA *);
+static VOID Legacy_SetMode(VOID);
+static VOID Legacy_UnsetMode(VOID);
+
+#define SOCKET_INIT				0x5001
+#define Socket_FUNCTIONS			0x5002
+typedef VOID (__cdecl *pSocketFunc)(UINT, UINT, UINT, UINT, UINT);
+static pSocketFunc SocketFunctionMap[] = {
+    (pSocketFunc)&CloseMySockets,		// 0x5002
+    (pSocketFunc)&Socket_accept,		// 0x5003
+    (pSocketFunc)&Socket_bind,			// 0x5004
+    (pSocketFunc)&Socket_close,			// 0x5005
+    (pSocketFunc)&Socket_connect,		// 0x5006
+    (pSocketFunc)&Socket_getpeername,		// 0x5007
+    (pSocketFunc)&Socket_getsockname,		// 0x5008
+    (pSocketFunc)&Socket_inetaddr,		// 0x5009
+    (pSocketFunc)&Socket_inetntoa,		// 0x500A
+    (pSocketFunc)&Socket_listen,		// 0x500B
+    (pSocketFunc)&Socket_recv,			// 0x500C
+    (pSocketFunc)&Socket_recvfrom,		// 0x500D
+    (pSocketFunc)&Socket_send,			// 0x500E
+    (pSocketFunc)&Socket_sendto,		// 0x500F
+    (pSocketFunc)&Socket_shutdown,		// 0x5010
+    (pSocketFunc)&Socket_create,		// 0x5011
+    (pSocketFunc)&Socket_gethostbyaddr,		// 0x5012
+    (pSocketFunc)&Socket_gethostbyname,		// 0x5013
+    (pSocketFunc)&Socket_gethostname,		// 0x5014
+    (pSocketFunc)&Socket_InstallCallback,	// 0x5015
+    (pSocketFunc)&Socket_RemoveCallback,	// 0x5016
+    (pSocketFunc)&Socket_AddCallback,		// 0x5017
+    (pSocketFunc)&Socket_GetCallbackInfo	// 0x5018
+};
+#define SOCKET_FUNCTIONS_NUM	(sizeof(SocketFunctionMap)/sizeof(pSocketFunc))
+
+#define VBEAF_FUNCTIONS				0x6001
+typedef VOID (*pVBEAFFunc)(DISPATCH_DATA *);
+static pVBEAFFunc VBEAFFunctionMap[] = {
+    &VBEAF_GetMemory,				// 0x6001
+    &VBEAF_GetModelist,				// 0x6002
+    &VBEAF_SetMode,				// 0x6003
+    &VBEAF_SetPalette,				// 0x6004
+    &VBEAF_BitBltVideo,				// 0x6005
+    &VBEAF_BitBltSys,				// 0x6006
+    &VBEAF_SetCursorShape,			// 0x6007
+    &VBEAF_SetCursorPos,			// 0x6008
+    &VBEAF_ShowCursor				// 0x6009
+};
+
+#define General_FUNCTIONS			0x7001
+typedef VOID (*pGeneralFunc)(VOID);
+static pGeneralFunc GeneralFunctionMap[] = {
+    &Legacy_GetMemory,				// 0x7001
+    0,						// 0x7002
+    &Legacy_SetMode,				// 0x7003
+    &Legacy_UnsetMode,				// 0x7004
+    &Legacy_RefreshScreen,			// 0x7005
+    &Mouse_GetCallbackInfo			// 0x7006
+};
+
+#define Mouse_FUNCTIONS				0x7010
+typedef VOID (*pMouseFunc)(VOID);
+static pMouseFunc MouseFunctionMap[] = {
+    &Mouse_ResetDriver,				// 0x7010
+    &Mouse_ShowCursor,				// 0x7011
+    &Mouse_HideCursor,				// 0x7012
+    &Mouse_GetPosition,				// 0x7013
+    &Mouse_SetPosition,				// 0x7014
+    &Mouse_GetPressData,			// 0x7015
+    &Mouse_GetReleaseData,			// 0x7016
+    &Mouse_DefineHorizRange,			// 0x7017
+    &Mouse_DefineVertRange,			// 0x7018
+    &Mouse_DefineGraphicsCursor,		// 0x7019
+    0,						// 0x701A
+    &Mouse_GetMotionCounters,			// 0x701B
+    &Mouse_SetCallbackParms,			// 0x701C
+    &Mouse_SetLightpenOn,			// 0x701D
+    &Mouse_SetLightpenOff,			// 0x701E
+    &Mouse_SetMickeyRatio,			// 0x701F
+    &Mouse_DefineUpdateRegion			// 0x7020
+};
+
+#define	TestFunctionMap(off, map)					    \
+    ((off >= map##_FUNCTIONS) &&					    \
+    (off <= map##_FUNCTIONS+sizeof(map##FunctionMap)/sizeof(p##map##Func)) && \
+    map##FunctionMap[off-map##_FUNCTIONS])
+#define FunctionMap(off, map)	    map##FunctionMap[off-map##_FUNCTIONS]
 
 VOID Extra291Dispatch(VOID)
 {
     WORD regAX = HIWORD(getEAX());
 
-    switch (regAX) {
-	case SOCKET_INIT:
-{
-    if(!InitMySockets(getECX()))
+    if(regAX == SOCKET_INIT) {
+	if(!InitMySockets(getECX()))
+	    setCF(1);
+	else
+	    setCF(0);
+    } else if(TestFunctionMap(regAX, Socket)) {
+	// call function with stack parameters
+	(*FunctionMap(regAX, Socket))(
+	    *((UINT *)(programStack + getEBP() +  8)),
+	    *((UINT *)(programStack + getEBP() + 12)),
+	    *((UINT *)(programStack + getEBP() + 16)),
+	    *((UINT *)(programStack + getEBP() + 20)),
+	    *((UINT *)(programStack + getEBP() + 24)));
+    } else if(TestFunctionMap(regAX, VBEAF)) {
+	// map data parameter
+	USHORT data_sel = getFS();
+	ULONG data_off = getESI();
+	DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
+	    VDM_PM);
+	// call function
+	(*FunctionMap(regAX, VBEAF))(data);
+	// unmap data parameter
+	VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
+    } else if(TestFunctionMap(regAX, General)) {
+	(*FunctionMap(regAX, General))();	// do the call
+    } else if(TestFunctionMap(regAX, Mouse)) {
+	(*FunctionMap(regAX, Mouse))();		// do the call
+    } else {
+	LogMessage("Unknown call 0x%x", (int)regAX);
 	setCF(1);
-    else
-	setCF(0);
-    break;
-}
-	case SOCKET_EXIT:
-{
-    CloseMySockets();
-    break;
-}
-	case SOCKET_ACCEPT:
-{
-    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
-    unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 12);
-
-    unsigned int Socket = *SocketSP;
-    PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + *pNameSP);
-
-    struct sockaddr_in in_Name;
-    unsigned int retval = sizeof(struct sockaddr_in);
-
-    in_Name.sin_family = AF_INET;
-    in_Name.sin_port = pName->Port;
-    in_Name.sin_addr.s_addr = pName->Address;
-
-    retval = accept(Socket, (struct sockaddr *)&in_Name, &retval);
-
-    if(retval == INVALID_SOCKET) {
-	setEAX(0xFFFFFFFF);
-	*SocketSettings->LastError = WSAGetLastError();
-    } else {
-	setEAX(retval);
-	if(pName) {
-	    pName->Port = in_Name.sin_port;
-	    pName->Address = in_Name.sin_addr.s_addr;
-	}
+	setAX(0x7100);
     }
-
-    break;
 }
-	case SOCKET_BIND:
+
+static VOID VBEAF_SetMode(DISPATCH_DATA *data)
 {
-    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
-    unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 12);
-
-    unsigned int Socket = *SocketSP;
-    PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + *pNameSP);
-
-    struct sockaddr_in in_Name;
-    int retval;
-
-    in_Name.sin_family = AF_INET;
-    in_Name.sin_port = pName->Port;
-    in_Name.sin_addr.s_addr = pName->Address;
-
-    retval = bind(Socket, (const struct sockaddr *)&in_Name,
-	sizeof(struct sockaddr_in));
-
-    if(retval != 0) {
-	setEAX(1);
-	*SocketSettings->LastError = WSAGetLastError();
-    } else {
-	setEAX(0);
-    }
-
-    break;
-}
-	case SOCKET_CLOSE:
-{
-    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
-
-    unsigned int Socket = *SocketSP;
-
-    int retval = closesocket(Socket);
-
-    if(retval != 0) {
-	setEAX(1);
-	*SocketSettings->LastError = WSAGetLastError();
-    } else {
-	setEAX(0);
-    }
-
-    break;
-}
-	case SOCKET_CONNECT:
-{
-    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
-    unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 12);
-
-    unsigned int Socket = *SocketSP;
-    PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + *pNameSP);
-
-    struct sockaddr_in in_Name;
-    int retval;
-
-    in_Name.sin_family = AF_INET;
-    in_Name.sin_port = pName->Port;
-    in_Name.sin_addr.s_addr = pName->Address;
-
-    retval = connect(Socket, (const struct sockaddr *)&in_Name,
-	sizeof(struct sockaddr_in));
-
-    if(retval != 0) {
-	setEAX(1);
-	*SocketSettings->LastError = WSAGetLastError();
-    } else {
-	setEAX(0);
-    }
-
-    break;
-}
-	case SOCKET_GETPEERNAME:
-{
-    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
-    unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 12);
-
-    unsigned int Socket = *SocketSP;
-    PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + *pNameSP);
-
-    struct sockaddr_in in_Name;
-    int retval = sizeof(struct sockaddr_in);
-
-    in_Name.sin_family = AF_INET;
-    in_Name.sin_port = pName->Port;
-    in_Name.sin_addr.s_addr = pName->Address;
-
-    retval = getpeername(Socket, (struct sockaddr *)&in_Name, &retval);
-
-    if(retval != 0) {
-	setEAX(1);
-	*SocketSettings->LastError = WSAGetLastError();
-    } else {
-	setEAX(0);
-	if(pName) {
-	    pName->Port = in_Name.sin_port;
-	    pName->Address = in_Name.sin_addr.s_addr;
-	}
-    }
-
-    break;
-}
-	case SOCKET_GETSOCKNAME:
-{
-    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
-    unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 12);
-
-    unsigned int Socket = *SocketSP;
-    PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + *pNameSP);
-
-    struct sockaddr_in in_Name;
-    int retval = sizeof(struct sockaddr_in);
-
-    in_Name.sin_family = AF_INET;
-    in_Name.sin_port = pName->Port;
-    in_Name.sin_addr.s_addr = pName->Address;
-
-    retval = getsockname(Socket, (struct sockaddr *)&in_Name, &retval);
-
-    if(retval != 0) {
-	setEAX(1);
-	*SocketSettings->LastError = WSAGetLastError();
-    } else {
-	setEAX(0);
-	if(pName) {
-	    pName->Port = in_Name.sin_port;
-	    pName->Address = in_Name.sin_addr.s_addr;
-	}
-    }
-
-    break;
-}
-	case SOCKET_INETADDR:
-{
-    unsigned int *pDottedAddrSP = (unsigned int *)(programStack + getEBP() + 8);
-
-    char *pDottedAddr = (char *)(programData + *pDottedAddrSP);
-
-    unsigned int retval = inet_addr(pDottedAddr);
-
-    if(retval == INVALID_SOCKET) {
-	setEAX(0xFFFFFFFF);
-	*SocketSettings->LastError = WSAGetLastError();
-    } else {
-	setEAX(retval);
-    }
-
-    break;
-}
-	case SOCKET_INETNTOA:
-{
-    unsigned int *AddressSP = (unsigned int *)(programStack + getEBP() + 8);
-
-    unsigned int Address = *AddressSP;
-
-    struct in_addr in;
-    char *retval;
-
-    in.s_addr = Address;
-
-    retval = inet_ntoa(in);
-
-    strncpy(SocketSettings->NetAddr_static, retval,
-	SocketSettings->STRING_MAX);
-    SocketSettings->NetAddr_static[SocketSettings->STRING_MAX-1] = 0;
-
-    break;
-}
-	case SOCKET_LISTEN:
-{
-    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
-    int *BackLogSP = (int *)(programStack + getEBP() + 12);
-
-    unsigned int Socket = *SocketSP;
-    int BackLog = *BackLogSP;
-
-    int retval = listen(Socket, BackLog);
-
-    if(retval != 0) {
-	setEAX(1);
-	*SocketSettings->LastError = WSAGetLastError();
-    } else {
-	setEAX(0);
-    }
-
-    break;
-}
-	case SOCKET_RECV:
-{
-    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
-    unsigned int *pBufSP = (unsigned int *)(programStack + getEBP() + 12);
-    int *MaxLenSP = (int *)(programStack + getEBP() + 16);
-    unsigned int *FlagsSP = (unsigned int *)(programStack + getEBP() + 20);
-
-    unsigned int Socket = *SocketSP;
-    unsigned char *pBuf = (unsigned char *)(programData + *pBufSP);
-    int MaxLen = *MaxLenSP;
-    unsigned int Flags = *FlagsSP;
-
-    int actflags = 0;
-    int retval;
-
-    if(Flags & 0x01)
-	actflags |= MSG_PEEK;
-    if(Flags & 0x02)
-	actflags |= MSG_OOB;
-
-    retval = recv(Socket, pBuf, MaxLen, actflags);
-
-    if(retval < 0) {
-	setEAX(0xFFFFFFFF);
-	*SocketSettings->LastError = WSAGetLastError();
-    } else {
-	setEAX(retval);
-    }
-
-    break;
-}
-	case SOCKET_RECVFROM:
-{
-    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
-    unsigned int *pBufSP = (unsigned int *)(programStack + getEBP() + 12);
-    int *MaxLenSP = (int *)(programStack + getEBP() + 16);
-    unsigned int *FlagsSP = (unsigned int *)(programStack + getEBP() + 20);
-    unsigned int *pFromSP = (unsigned int *)(programStack + getEBP() + 24);
-
-    unsigned int Socket = *SocketSP;
-    unsigned char *pBuf = (unsigned char *)(programData + *pBufSP);
-    int MaxLen = *MaxLenSP;
-    unsigned int Flags = *FlagsSP;
-    PMODELIB_SOCKADDR *pFrom = (PMODELIB_SOCKADDR *)(programData + *pFromSP);
-
-    int actflags = 0;
-    struct sockaddr_in in_From;
-    int retval = sizeof(struct sockaddr_in);
-
-    if(Flags & 0x01)
-	actflags |= MSG_PEEK;
-    if(Flags & 0x02)
-	actflags |= MSG_OOB;
-
-    in_From.sin_family = AF_INET;
-    in_From.sin_port = pFrom->Port;
-    in_From.sin_addr.s_addr = pFrom->Address;
-
-    retval = recvfrom(Socket, pBuf, MaxLen, actflags,
-	(struct sockaddr *)&in_From, &retval);
-
-    if(retval < 0) {
-	setEAX(0xFFFFFFFF);
-	*SocketSettings->LastError = WSAGetLastError();
-    } else {
-	setEAX(retval);
-	if(pFrom) {
-	    pFrom->Port = in_From.sin_port;
-	    pFrom->Address = in_From.sin_addr.s_addr;
-	}
-    }
-
-    break;
-}
-	case SOCKET_SEND:
-{
-    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
-    unsigned int *pBufSP = (unsigned int *)(programStack + getEBP() + 12);
-    int *LenSP = (int *)(programStack + getEBP() + 16);
-    unsigned int *FlagsSP = (unsigned int *)(programStack + getEBP() + 20);
-
-    unsigned int Socket = *SocketSP;
-    unsigned char *pBuf = (unsigned char *)(programData + *pBufSP);
-    int Len = *LenSP;
-    unsigned int Flags = *FlagsSP;
-
-    int actflags = 0;
-    int retval;
-
-    if(Flags & 0x01)
-	actflags |= MSG_OOB;
-
-    retval = send(Socket, pBuf, Len, actflags);
-
-    if(retval < 0) {
-	setEAX(0xFFFFFFFF);
-	*SocketSettings->LastError = WSAGetLastError();
-    } else {
-	setEAX(retval);
-    }
-
-    break;
-}
-	case SOCKET_SENDTO:
-{
-    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
-    unsigned int *pBufSP = (unsigned int *)(programStack + getEBP() + 12);
-    int *LenSP = (int *)(programStack + getEBP() + 16);
-    unsigned int *FlagsSP = (unsigned int *)(programStack + getEBP() + 20);
-    unsigned int *pToSP = (unsigned int *)(programStack + getEBP() + 24);
-
-    unsigned int Socket = *SocketSP;
-    unsigned char *pBuf = (unsigned char *)(programData + *pBufSP);
-    int Len = *LenSP;
-    unsigned int Flags = *FlagsSP;
-    PMODELIB_SOCKADDR *pTo = (PMODELIB_SOCKADDR *)(programData + *pToSP);
-
-    int actflags = 0;
-    struct sockaddr_in in_To;
-    int retval;
-
-    if(Flags & 0x01)
-	actflags |= MSG_OOB;
-
-    in_To.sin_family = AF_INET;
-    in_To.sin_port = pTo->Port;
-    in_To.sin_addr.s_addr = pTo->Address;
-
-    retval = sendto(Socket, pBuf, Len, actflags,
-	(const struct sockaddr *)&in_To, sizeof(struct sockaddr_in));
-
-    if(retval < 0) {
-	setEAX(0xFFFFFFFF);
-	*SocketSettings->LastError = WSAGetLastError();
-    } else {
-	setEAX(retval);
-    }
-
-    break;
-}
-	case SOCKET_SHUTDOWN:
-{
-    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
-    unsigned int *FlagsSP = (unsigned int *)(programStack + getEBP() + 12);
-
-    unsigned int Socket = *SocketSP;
-    unsigned int Flags = *FlagsSP;
-
-    int actflags = Flags - 1;
-
-    int retval = shutdown(Socket, actflags);
-
-    if(retval != 0) {
-	setEAX(1);
-	*SocketSettings->LastError = WSAGetLastError();
-    } else {
-	setEAX(0);
-    }
-
-    break;
-}
-	case SOCKET_CREATE:
-{
-    unsigned int *TypeSP = (unsigned int *)(programStack + getEBP() + 8);
-
-    unsigned int Type = *TypeSP;
-
-    int acttype = 0;
-    unsigned int retval;
-
-    switch(Type) {
-	case 1:
-	    acttype = SOCK_STREAM;
-	    break;
-	case 2:
-	    acttype = SOCK_DGRAM;
-	    break;
-    }
-
-    retval = socket(AF_INET, acttype, IPPROTO_IP);
-
-    if(retval == INVALID_SOCKET) {
-	setEAX(0xFFFFFFFF);
-	*SocketSettings->LastError = WSAGetLastError();
-    } else {
-	setEAX(retval);
-    }
-
-    break;
-}
-	case SOCKET_GETHOSTBYADDR:
-{
-    setEAX(0);
-    break;
-}
-	case SOCKET_GETHOSTBYNAME:
-{
-    setEAX(0);
-    break;
-}
-	case SOCKET_GETHOSTNAME:
-{
-    unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 8);
-    int *NameLenSP = (int *)(programStack + getEBP() + 12);
-
-    char *pName = (char *)(programData + *pNameSP);
-    int NameLen = *NameLenSP;
-
-    int retval = gethostname(pName, NameLen);
-
-    if(retval != 0) {
-	setEAX(1);
-	*SocketSettings->LastError = WSAGetLastError();
-    } else {
-	setEAX(0);
-    }
-
-    break;
-}
-	case SOCKET_INSTALLCALLBACK:
-{
-    if(!InitMyWindow2(GetInstance())) {
-	MessageBox(NULL, "Could not initialize socket window.",
-	    "Extra BIOS Services for ECE 291", MB_OK | MB_ICONERROR);
-	setEAX(1);
-	break;
-    }
-    SocketsEnableCallbacks(getDL(), TRUE);
-    setEAX(0);
-    break;
-}
-	case SOCKET_REMOVECALLBACK:
-{
-    CloseMyWindow2();
-    SocketsEnableCallbacks(0, FALSE);
-    break;
-}
-	case SOCKET_ADDCALLBACK:
-{
-    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
-    unsigned int *EventMaskSP = (unsigned int *)(programStack + getEBP() + 12);
-
-    unsigned int Socket = *SocketSP;
-    unsigned int EventMask = *EventMaskSP;
-
-    int acteventmask = 0, retval = 0;
-
-    HWND hWnd = GetMyWindow2();
-
-    if(!hWnd) {
-	setEAX(1);
-	*SocketSettings->LastError = 0xFFFF;
-	break;
-    }
-
-    if(EventMask & 0x01)
-	acteventmask |= FD_READ;
-    if(EventMask & 0x02)
-	acteventmask |= FD_WRITE;
-    if(EventMask & 0x04)
-	acteventmask |= FD_OOB;
-    if(EventMask & 0x08)
-	acteventmask |= FD_ACCEPT;
-    if(EventMask & 0x10)
-	acteventmask |= FD_CONNECT;
-    if(EventMask & 0x20)
-	acteventmask |= FD_CLOSE;
-
-    retval = WSAAsyncSelect(Socket, hWnd, WM_USER, acteventmask);
-
-    if(retval != 0) {
-	setEAX(1);
-	*SocketSettings->LastError = WSAGetLastError();
-    } else {
-	setEAX(0);
-    }
-
-    break;
-}
-	case SOCKET_GETCALLBACKINFO:
-{
-    SocketsGetCallbackInfo();
-    break;
-}
-	case VBEAF_GET_MEMORY:
-{
-    USHORT data_sel = getFS();
-    ULONG data_off = getESI();
-    DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
-	VDM_PM);
-    data->i[0] = DDraw_GetFreeMemory();
-    if(data->i[0] == 0xFFFFFFFF || data->i[0] == 0xFFFEFFFF) {
-	setCF(1);
-	data->i[0] = 0;
-    } else {
-	setCF(0);
-	data->i[0] >>= 10;	// Return in K
-    }
-    VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
-    break;
-}
-	case VBEAF_GET_MODELIST:
-{
-    USHORT data_sel = getFS();
-    ULONG data_off = getESI();
-    DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
-	VDM_PM);
-    if(!DDraw_GetModelist(data->seg[0], (WORD)data->off[0], data))
-	setCF(1);
-    else
-	setCF(0);
-    VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
-    break;
-}
-	case VBEAF_SET_MODE:
-{
-    USHORT data_sel = getFS();
-    ULONG data_off = getESI();
-    DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
-	VDM_PM);
     setCF(0);
 
     VBEAF_width = data->i[0];
     VBEAF_height = data->i[1];
     VBEAF_depth = data->i[2];
     usingVBEAF = TRUE;
-    VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
-    break;
 }
-	case VBEAF_SET_PALETTE:
-{
-    setCF(1);
-    break;
-}
-	case VBEAF_BITBLT_VIDEO:
-{
-    setCF(1);
-    break;
-}
-	case VBEAF_BITBLT_SYS:
-{
-    USHORT data_sel = getFS();
-    ULONG data_off = getESI();
-    DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
-    	VDM_PM);
-    PVOID source = VdmMapFlat(data->seg[0], data->off[0], VDM_PM);
 
-    if(DDraw_BitBltSys(source, data))
-	setCF(1);
-
-    VdmUnmapFlat(data->seg[0], data->off[0], source, VDM_PM);
-    VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
-    break;
-}
-	case VBEAF_SET_CURSOR_SHAPE:
-{
-    setCF(1);
-    break;
-}
-	case VBEAF_SET_CURSOR_POS:
-{
-    USHORT data_sel = getFS();
-    ULONG data_off = getESI();
-    DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
-    	VDM_PM);
-
-    SetMousePosition((USHORT)data->i[0], (USHORT)data->i[1]);
-
-    VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
-    break;
-}
-	case VBEAF_SHOW_CURSOR:
-{
-    USHORT data_sel = getFS();
-    ULONG data_off = getESI();
-    DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
-    	VDM_PM);
-
-    if(data->i[0])
-	ShowMouse();
-    else
-	HideMouse();
-
-    VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
-    break;
-}
-	case GET_MEMORY:
-{
-    setCF(0);
-    setAX((WORD)(DDraw_GetFreeMemory()>>16));	// Return in 64K
-    break;
-}
-	case SET_MODE:
+static VOID Legacy_SetMode(VOID)
 {
     inDispatchSegment = getCS();
     inDispatchOffset = getEBX() & 0xFFFF;
@@ -702,7 +207,7 @@ VOID Extra291Dispatch(VOID)
 	setCF(1);
 	setAX(0xFFFF);
 	VdmUnmapFlat(inDispatchSegment, inDispatchOffset, inDispatch, VDM_V86);
-	break;
+	return;
     }
     if(!InitMouse()) {
 	MessageBox(NULL, "Could not initialize mouse driver.",
@@ -711,7 +216,7 @@ VOID Extra291Dispatch(VOID)
 	setAX(0xFFFF);
 	CloseKey();
 	VdmUnmapFlat(inDispatchSegment, inDispatchOffset, inDispatch, VDM_V86);
-	break;
+	return;
     }
 
     if(!usingVBEAF) {
@@ -719,7 +224,7 @@ VOID Extra291Dispatch(VOID)
 	VBEAF_height = (int)LOWORD(getECX());
     }
 
-    HideMouse();
+    Mouse_HideCursor();
 
     if(!InitMyWindow(GetInstance(), VBEAF_width, VBEAF_height)) {
 	MessageBox(NULL, "Could not initialize output window.",
@@ -729,7 +234,7 @@ VOID Extra291Dispatch(VOID)
 	CloseMouse();
 	CloseKey();
 	VdmUnmapFlat(inDispatchSegment, inDispatchOffset, inDispatch, VDM_V86);
-	break;
+	return;
     }
 
     if(usingVBEAF) {
@@ -746,10 +251,9 @@ VOID Extra291Dispatch(VOID)
 	setAX(DDraw_SetMode_Old((int)HIWORD(getECX()), (int)LOWORD(getECX()),
 	    displayBuffer));
     }
-
-    break;
 }
-	case UNSET_MODE:
+
+static VOID Legacy_UnsetMode(VOID)
 {
     setCF(0);
     setAX(DDraw_UnSetMode());
@@ -757,114 +261,11 @@ VOID Extra291Dispatch(VOID)
     CloseMouse();
     CloseKey();
 
-    ShowMouse();
+    Mouse_ShowCursor();
 
     if(!usingVBEAF)
 	VdmUnmapFlat(displaySegment, displayOffset, displayBuffer, displayMode);
     VdmUnmapFlat(inDispatchSegment, inDispatchOffset, inDispatch, VDM_V86);
     usingVBEAF = FALSE;
-
-    break;
-}
-	case REFRESH_SCREEN:
-{
-    DDraw_RefreshScreen();
-    setCF(0);
-
-    break;
-}
-	case GET_MOUSE_CALLBACK_INFO:
-{
-    USHORT cond, bstate, col, row;
-    GetCallbackInfo(&cond, &bstate, &col, &row);
-    setAX(cond); setBX(bstate); setCX(col); setDX(row); setSI(0); setDI(0);
-    break;
-}
-	case MOUSE_RESET_DRIVER:
-{
-    break;
-}
-	case MOUSE_SHOW_CURSOR:
-{
-    ShowMouse();
-    break;
-}
-	case MOUSE_HIDE_CURSOR:
-{
-    HideMouse();
-    break;
-}
-	case MOUSE_GET_POSITION:
-{
-    USHORT button, column, row;
-    GetMousePosition(&button, &column, &row);
-    setBX(button); setCX(column); setDX(row);
-    break;
-}
-	case MOUSE_SET_POSITION:
-{
-    SetMousePosition(getCX(), getDX());
-    break;
-}
-	case MOUSE_GET_PRESS_DATA:
-{
-    setAX(0); setBX(0); setCX(0); setDX(0);
-    break;
-}
-	case MOUSE_GET_RELEASE_DATA:
-{
-    setAX(0); setBX(0); setCX(0); setDX(0);
-    break;
-}
-	case MOUSE_DEFINE_HORIZ_RANGE:
-{
-    SetHorizontalMouseRange(getCX(), getDX());
-    break;
-}
-	case MOUSE_DEFINE_VERT_RANGE:
-{
-    SetVerticalMouseRange(getCX(), getDX());
-    break;
-}
-	case MOUSE_DEFINE_GRAPHICS_CURSOR:
-{
-    break;
-}
-	case MOUSE_GET_MOTION_COUNTERS:
-{
-    setCX(0); setDX(0);
-    break;
-}
-	case MOUSE_SET_CALLBACK_PARMS:
-{
-    SetMouseCallbackMask(getCX());
-    break;
-}
-	case MOUSE_SET_LIGHTPEN_ON:
-{
-    break;
-}
-	case MOUSE_SET_LIGHTPEN_OFF:
-{
-    break;
-}
-	case MOUSE_SET_MICKEY_RATIO:
-{
-    break;
-}
-	case MOUSE_DEFINE_UPDATE_REGION:
-{
-    break;
-}
-	default:
-{
-    LogMessage("Unknown call 0x%x", (int)regAX);
-    setCF(1);
-    setAX(0x7100);
-    break;
-}
-    }
-
-    return;
 }
 

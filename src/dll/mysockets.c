@@ -15,17 +15,17 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mysockets.c,v 1.2 2001/04/10 09:06:45 pete Exp $
+   $Id: mysockets.c,v 1.3 2001/04/11 19:12:49 pete Exp $
 */
 
 #include "ex291srv.h"
 #include "deque.h"
 
-USHORT programDataSel;
-PBYTE programData = 0;
-USHORT programStackSel;
-PBYTE programStack = 0;
-PMODELIB_SOCKINITDATA *SocketSettings = 0;
+static USHORT programDataSel;
+static PBYTE programData = 0;
+static USHORT programStackSel;
+PBYTE programStack = 0;		// needs to be global for dispatch.c to access
+static PMODELIB_SOCKINITDATA *SocketSettings = 0;
 
 static queue socketSocketQueue, socketEventQueue;
 static HANDLE socketMutex;
@@ -76,7 +76,7 @@ BOOL InitMySockets(unsigned int InitDataOff)
     return TRUE;
 }
 
-VOID CloseMySockets(VOID)
+VOID __cdecl CloseMySockets(VOID)
 {
     if(!SocketsReady)
 	return;
@@ -138,7 +138,397 @@ VOID DoSocketsCallback(UINT socket, LONG event)
 	}
 }
 
-VOID SocketsGetCallbackInfo(VOID)
+VOID __cdecl Socket_accept(UINT Socket, UINT pNameOff)
+{
+    PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + pNameOff);
+
+    struct sockaddr_in in_Name;
+    unsigned int retval = sizeof(struct sockaddr_in);
+
+    in_Name.sin_family = AF_INET;
+    in_Name.sin_port = pName->Port;
+    in_Name.sin_addr.s_addr = pName->Address;
+
+    retval = accept(Socket, (struct sockaddr *)&in_Name, &retval);
+
+    if(retval == INVALID_SOCKET) {
+	setEAX(0xFFFFFFFF);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(retval);
+	if(pName) {
+	    pName->Port = in_Name.sin_port;
+	    pName->Address = in_Name.sin_addr.s_addr;
+	}
+    }
+}
+
+VOID __cdecl Socket_bind(UINT Socket, UINT pNameOff)
+{
+    PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + pNameOff);
+
+    struct sockaddr_in in_Name;
+    int retval;
+
+    in_Name.sin_family = AF_INET;
+    in_Name.sin_port = pName->Port;
+    in_Name.sin_addr.s_addr = pName->Address;
+
+    retval = bind(Socket, (const struct sockaddr *)&in_Name,
+	sizeof(struct sockaddr_in));
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+    }
+}
+
+VOID __cdecl Socket_close(UINT Socket)
+{
+    int retval = closesocket(Socket);
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+    }
+}
+
+VOID __cdecl Socket_connect(UINT Socket, UINT pNameOff)
+{
+    PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + pNameOff);
+
+    struct sockaddr_in in_Name;
+    int retval;
+
+    in_Name.sin_family = AF_INET;
+    in_Name.sin_port = pName->Port;
+    in_Name.sin_addr.s_addr = pName->Address;
+
+    retval = connect(Socket, (const struct sockaddr *)&in_Name,
+	sizeof(struct sockaddr_in));
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+    }
+}
+
+VOID __cdecl Socket_getpeername(UINT Socket, UINT pNameOff)
+{
+    PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + pNameOff);
+
+    struct sockaddr_in in_Name;
+    int retval = sizeof(struct sockaddr_in);
+
+    in_Name.sin_family = AF_INET;
+    in_Name.sin_port = pName->Port;
+    in_Name.sin_addr.s_addr = pName->Address;
+
+    retval = getpeername(Socket, (struct sockaddr *)&in_Name, &retval);
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+	if(pName) {
+	    pName->Port = in_Name.sin_port;
+	    pName->Address = in_Name.sin_addr.s_addr;
+	}
+    }
+}
+
+VOID __cdecl Socket_getsockname(UINT Socket, UINT pNameOff)
+{
+    PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + pNameOff);
+
+    struct sockaddr_in in_Name;
+    int retval = sizeof(struct sockaddr_in);
+
+    in_Name.sin_family = AF_INET;
+    in_Name.sin_port = pName->Port;
+    in_Name.sin_addr.s_addr = pName->Address;
+
+    retval = getsockname(Socket, (struct sockaddr *)&in_Name, &retval);
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+	if(pName) {
+	    pName->Port = in_Name.sin_port;
+	    pName->Address = in_Name.sin_addr.s_addr;
+	}
+    }
+}
+
+VOID __cdecl Socket_inetaddr(UINT pDottedAddrOff)
+{
+    char *pDottedAddr = (char *)(programData + pDottedAddrOff);
+
+    unsigned int retval = inet_addr(pDottedAddr);
+
+    if(retval == INVALID_SOCKET) {
+	setEAX(0xFFFFFFFF);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(retval);
+    }
+}
+
+VOID __cdecl Socket_inetntoa(UINT Address)
+{
+    struct in_addr in;
+    char *retval;
+
+    in.s_addr = Address;
+
+    retval = inet_ntoa(in);
+
+    strncpy(SocketSettings->NetAddr_static, retval,
+	SocketSettings->STRING_MAX);
+    SocketSettings->NetAddr_static[SocketSettings->STRING_MAX-1] = 0;
+}
+
+VOID __cdecl Socket_listen(UINT Socket, int BackLog)
+{
+    int retval = listen(Socket, BackLog);
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+    }
+}
+
+VOID __cdecl Socket_recv(UINT Socket, UINT pBufOff, int MaxLen, UINT Flags)
+{
+    unsigned char *pBuf = (unsigned char *)(programData + pBufOff);
+
+    int actflags = 0;
+    int retval;
+
+    if(Flags & 0x01)
+	actflags |= MSG_PEEK;
+    if(Flags & 0x02)
+	actflags |= MSG_OOB;
+
+    retval = recv(Socket, pBuf, MaxLen, actflags);
+
+    if(retval < 0) {
+	setEAX(0xFFFFFFFF);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(retval);
+    }
+}
+
+VOID __cdecl Socket_recvfrom(UINT Socket, UINT pBufOff, int MaxLen, UINT Flags,
+    UINT pFromOff)
+{
+    unsigned char *pBuf = (unsigned char *)(programData + pBufOff);
+    PMODELIB_SOCKADDR *pFrom = (PMODELIB_SOCKADDR *)(programData + pFromOff);
+
+    int actflags = 0;
+    struct sockaddr_in in_From;
+    int retval = sizeof(struct sockaddr_in);
+
+    if(Flags & 0x01)
+	actflags |= MSG_PEEK;
+    if(Flags & 0x02)
+	actflags |= MSG_OOB;
+
+    in_From.sin_family = AF_INET;
+    in_From.sin_port = pFrom->Port;
+    in_From.sin_addr.s_addr = pFrom->Address;
+
+    retval = recvfrom(Socket, pBuf, MaxLen, actflags,
+	(struct sockaddr *)&in_From, &retval);
+
+    if(retval < 0) {
+	setEAX(0xFFFFFFFF);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(retval);
+	if(pFrom) {
+	    pFrom->Port = in_From.sin_port;
+	    pFrom->Address = in_From.sin_addr.s_addr;
+	}
+    }
+}
+
+VOID __cdecl Socket_send(UINT Socket, UINT pBufOff, int Len, UINT Flags)
+{
+    unsigned char *pBuf = (unsigned char *)(programData + pBufOff);
+
+    int actflags = 0;
+    int retval;
+
+    if(Flags & 0x01)
+	actflags |= MSG_OOB;
+
+    retval = send(Socket, pBuf, Len, actflags);
+
+    if(retval < 0) {
+	setEAX(0xFFFFFFFF);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(retval);
+    }
+}
+
+VOID __cdecl Socket_sendto(UINT Socket, UINT pBufOff, int Len, UINT Flags,
+    UINT pToOff)
+{
+    unsigned char *pBuf = (unsigned char *)(programData + pBufOff);
+    PMODELIB_SOCKADDR *pTo = (PMODELIB_SOCKADDR *)(programData + pToOff);
+
+    int actflags = 0;
+    struct sockaddr_in in_To;
+    int retval;
+
+    if(Flags & 0x01)
+	actflags |= MSG_OOB;
+
+    in_To.sin_family = AF_INET;
+    in_To.sin_port = pTo->Port;
+    in_To.sin_addr.s_addr = pTo->Address;
+
+    retval = sendto(Socket, pBuf, Len, actflags,
+	(const struct sockaddr *)&in_To, sizeof(struct sockaddr_in));
+
+    if(retval < 0) {
+	setEAX(0xFFFFFFFF);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(retval);
+    }
+}
+
+VOID __cdecl Socket_shutdown(UINT Socket, UINT Flags)
+{
+    int actflags = Flags - 1;
+
+    int retval = shutdown(Socket, actflags);
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+    }
+}
+
+VOID __cdecl Socket_create(UINT Type)
+{
+    int acttype = 0;
+    unsigned int retval;
+
+    switch(Type) {
+	case 1:
+	    acttype = SOCK_STREAM;
+	    break;
+	case 2:
+	    acttype = SOCK_DGRAM;
+	    break;
+    }
+
+    retval = socket(AF_INET, acttype, IPPROTO_IP);
+
+    if(retval == INVALID_SOCKET) {
+	setEAX(0xFFFFFFFF);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(retval);
+    }
+}
+
+VOID __cdecl Socket_gethostbyaddr(VOID)
+{
+    setEAX(0);
+}
+
+VOID __cdecl Socket_gethostbyname(VOID)
+{
+    setEAX(0);
+}
+
+VOID __cdecl Socket_gethostname(UINT pNameOff, int NameLen)
+{
+    char *pName = (char *)(programData + pNameOff);
+
+    int retval = gethostname(pName, NameLen);
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+    }
+}
+
+VOID __cdecl Socket_InstallCallback(VOID)
+{
+    if(!InitMyWindow2(GetInstance())) {
+	MessageBox(NULL, "Could not initialize socket window.",
+	    "Extra BIOS Services for ECE 291", MB_OK | MB_ICONERROR);
+	setEAX(1);
+	return;
+    }
+    SocketsEnableCallbacks(getDL(), TRUE);
+    setEAX(0);
+}
+
+VOID __cdecl Socket_RemoveCallback(VOID)
+{
+    CloseMyWindow2();
+    SocketsEnableCallbacks(0, FALSE);
+}
+
+VOID __cdecl Socket_AddCallback(UINT Socket, UINT EventMask)
+{
+    int acteventmask = 0, retval = 0;
+
+    HWND hWnd = GetMyWindow2();
+
+    if(!hWnd) {
+	setEAX(1);
+	*SocketSettings->LastError = 0xFFFF;
+	return;
+    }
+
+    if(EventMask & 0x01)
+	acteventmask |= FD_READ;
+    if(EventMask & 0x02)
+	acteventmask |= FD_WRITE;
+    if(EventMask & 0x04)
+	acteventmask |= FD_OOB;
+    if(EventMask & 0x08)
+	acteventmask |= FD_ACCEPT;
+    if(EventMask & 0x10)
+	acteventmask |= FD_CONNECT;
+    if(EventMask & 0x20)
+	acteventmask |= FD_CLOSE;
+
+    retval = WSAAsyncSelect(Socket, hWnd, WM_USER, acteventmask);
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+    }
+}
+
+VOID __cdecl Socket_GetCallbackInfo(VOID)
 {
     if(!SocketsReady || !SocketsCallbacksEnabled) {
 	setEAX(1);

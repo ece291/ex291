@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: directdraw.c,v 1.11 2001/04/03 04:20:36 pete Exp $
+   $Id: directdraw.c,v 1.12 2001/04/11 19:12:49 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -57,6 +57,8 @@ typedef struct MODELIST_DATA
     } truecolor_modes[MAX_MODES];
 } MODELIST_DATA;
 
+static DWORD DDraw_GetFreeMemory(VOID);
+
 BOOL InitDirectDraw(VOID)
 {
     HRESULT hr;
@@ -89,7 +91,7 @@ VOID CloseDirectDraw(VOID)
     CoUninitialize();
 }
 
-DWORD DDraw_GetFreeMemory(VOID)
+static DWORD DDraw_GetFreeMemory(VOID)
 {
     DDSCAPS dispcaps;
     DWORD memamt = 0;
@@ -111,15 +113,19 @@ DWORD DDraw_GetFreeMemory(VOID)
 
 HRESULT WINAPI DDraw_GetModelist_Callback(LPDDSURFACEDESC pddsd, LPVOID pc);
 
-BOOL DDraw_GetModelist(WORD cb_seg, WORD cb_off, DISPATCH_DATA *data)
+VOID VBEAF_GetModelist(DISPATCH_DATA *data)
 {
     MODELIST_DATA mldata;
     WORD cs, ip;
     int retval;
     int i;
+    WORD cb_seg = data->seg[0];
+    WORD cb_off = (WORD)data->off[0];
 
-    if(!pDD3)
-	return FALSE;
+    if(!pDD3) {
+	setCF(1);
+	return;
+    }
 
     cs = getCS();
     ip = getIP();
@@ -136,7 +142,8 @@ BOOL DDraw_GetModelist(WORD cb_seg, WORD cb_off, DISPATCH_DATA *data)
 	    "Extra BIOS Services for ECE 291", MB_OK | MB_ICONERROR);
 	setCS(cs);
 	setIP(ip);
-	return FALSE;
+	setCF(1);
+	return;
     }
 
     // fill in emulated modes
@@ -170,7 +177,7 @@ BOOL DDraw_GetModelist(WORD cb_seg, WORD cb_off, DISPATCH_DATA *data)
 
     setCS(cs);
     setIP(ip);
-    return TRUE;
+    setCF(0);
 }
 
 HRESULT WINAPI DDraw_GetModelist_Callback(LPDDSURFACEDESC pddsd, LPVOID pc)
@@ -539,20 +546,25 @@ VOID DDraw_RefreshScreen(VOID)
 //LogMessage("End Refresh");
 }
 
-int DDraw_BitBltSys(PVOID source, DISPATCH_DATA *data)
+VOID VBEAF_BitBltSys(DISPATCH_DATA *data)
 {
     HRESULT hr;
     DDSURFACEDESC ddsd;
     RECT srcRect, destRect;
+    PVOID source;
 
-    if(!usingVBEAF)
-	return -1;
+    if(!usingVBEAF) {
+	setCF(1);
+	return;
+    }
 
-    if(!pDDSPrimary || !pDDSBack)
-	return -1;
+    if(!pDDSPrimary || !pDDSBack) {
+	setCF(1);
+	return;
+    }
 
     if(!*WindowedMode && !WindowActive)
-	return 0;
+	return;
 
     IDirectDrawSurface3_Restore(pDDSPrimary);
 
@@ -567,6 +579,8 @@ int DDraw_BitBltSys(PVOID source, DISPATCH_DATA *data)
     ddsd.ddpfPixelFormat.dwRBitMask = 0xFF0000;
     ddsd.ddpfPixelFormat.dwGBitMask = 0x00FF00;
     ddsd.ddpfPixelFormat.dwBBitMask = 0x0000FF;
+
+    source = VdmMapFlat(data->seg[0], data->off[0], VDM_PM);
 
     if (samePixelFormat) {
 	ddsd.lPitch = data->i[0];
@@ -616,7 +630,9 @@ int DDraw_BitBltSys(PVOID source, DISPATCH_DATA *data)
 	    case DDERR_UNSUPPORTED: LogMessage("Unsupported"); break;
 	    case DDERR_GENERIC: LogMessage("Generic"); break;
 	}
-	return -1;
+	VdmUnmapFlat(data->seg[0], data->off[0], source, VDM_PM);
+	setCF(1);
+	return;
     }
 
     if(*WindowedMode) {
@@ -661,10 +677,10 @@ int DDraw_BitBltSys(PVOID source, DISPATCH_DATA *data)
 	    case DDERR_UNSUPPORTED: LogMessage("Unsupported"); break;
 	    default: LogMessage("Other"); break;
 	}
-	return -1;
+	setCF(1);
     }
 
-    return 0;
+    VdmUnmapFlat(data->seg[0], data->off[0], source, VDM_PM);
 }
 
 VOID DDraw_UpdateWindow(RECT *r)
@@ -702,5 +718,41 @@ VOID DDraw_UpdateWindow(RECT *r)
 	    default: LogMessage("Other"); break;
 	}
     }
+}
+
+VOID VBEAF_GetMemory(DISPATCH_DATA *data)
+{
+    data->i[0] = DDraw_GetFreeMemory();
+    if(data->i[0] == 0xFFFFFFFF || data->i[0] == 0xFFFEFFFF) {
+	setCF(1);
+	data->i[0] = 0;
+    } else {
+	setCF(0);
+	data->i[0] >>= 10;	// Return in K
+    }
+}
+
+VOID VBEAF_SetPalette(DISPATCH_DATA *data)
+{
+    // not implemented: return error
+    setCF(1);
+}
+
+VOID VBEAF_BitBltVideo(DISPATCH_DATA *data)
+{
+    // not implemented: return error
+    setCF(1);
+}
+
+VOID Legacy_GetMemory(VOID)
+{
+    setCF(0);
+    setAX((WORD)(DDraw_GetFreeMemory()>>16));	// Return in 64K chunks
+}
+
+VOID Legacy_RefreshScreen(VOID)
+{
+    DDraw_RefreshScreen();
+    setCF(0);
 }
 
