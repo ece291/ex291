@@ -1,0 +1,138 @@
+EX291 (Extra Bios Services for ECE 291) API
+-------------------------------------------
+
+Environment variable
+--------------------
+
+The EX291 environment variable, like the BLASTER environment variable used by
+old SoundBlasters, contains several different options that can be used to set
+what resources EX291 uses and on what ports.  Seperate multiple options with
+spaces.  The environment variable must be set _before_ running ex291.com!
+
+w|S    w=windowed/S=fullscreen.  Selects whether EX291 will fullscreen the
+       application window when switching into graphics mode.  Fullscreen is
+       faster, windowed allows for debugging in the Command Prompt window.
+
+Kx,yyy x=IRQ virtual keyboard uses, yyy=I/O port virtual keyboard uses (in hex).
+       The virtual keyboard is used when a key is pressed when the graphics
+       window has focus (or when EX291 is running fullscreen).  It acts
+       identically to the normal keyboard, only it uses a different IRQ and I/O
+       port to allow for debugging.
+Mz     z=IRQ virtual mouse uses.  In graphics mode, EX291 overrides the normal
+       mouse driver with its own internal functions.  To do this, it needs an
+       IRQ to use internally.
+
+Select IRQs and I/O ports for these options which the application doesn't
+need for other purposes and the hardware hasn't already taken (eg, don't try
+to put the virtual keyboard on IRQ1: it will conflict with the hardware IRQ
+port and cause unpredictable behavior).
+
+The application should ask EX291 (using subfunction ??h) what IRQ and I/O port
+the keyboard uses in order to properly trap keyboard events.  Note that for
+high (>=8) IRQs it is necessary to ack the slave PIC as well as the master PIC.
+Note too that high and low IRQs are mapped to different interrupt ranges.
+
+Examples:
+  EX291=w K7,300 M12 - windowed, keyboard on IRQ7, port 300h, mouse on IRQ12
+  EX291=S K10,301 M5 - full screen, keyboard on IRQ10 (high IRQ!), port 301h,
+                      mouse on IRQ5
+
+
+Int 10h (Video Graphics)
+------------------------
+
+Function AX=4F23h (VESA Supplemental Entry Point for ECE 291 API):
+  Description:
+    VESA-compliant entry point to EX291 video driver
+  Inputs:
+    BL = Subfunction (see later in this document for subfunctions)
+  Outputs:
+    Depends on subfunction called
+  Notes:
+    Depends on subfunction called
+  Bugs:
+    Depends on subfunction called
+
+Function AX=4F23h, Subfunction BL=00h (Get Supplemental API Info):
+  Description:
+    VESA-compliant function to get Supplemental API information (functionality,
+    driver name, version, etc)
+  Inputs:
+    ES:DI = RM Segment:Offset of VESA Supplemental API information block
+  Outputs:
+    VESA Supplemental API Information Block values:
+      Signature = 'VBE/291'
+      Version = Major and minor version of functions implemented
+      SubFunc = Bitmask of implemented functions
+      OEMSoftwareRev = Major and minor revision of Extra BIOS services
+      OEMVendorNamePtr = Pointer to 'ECE 291'
+      OEMProductNamePtr = Pointer to 'Extra BIOS Services'
+      OEMProductRevPtr = Pointer to 'Revision x.x'
+      OEMStringPtr = Pointer to 'ECE 291'
+    AX = 004Fh
+  Notes:
+  Bugs:
+    May conflict with other VESA APIs at 23h.
+
+Function AX=4F23h, Subfunction BL=01h (Get Settings):
+  Description:
+    Returns information regarding what IRQs and ports are used by various
+    components of EX291 (primarily the keyboard).
+  Inputs:
+  Outputs:
+    AX = 004Fh
+    BL = Keyboard interrupt number (based on IRQ)
+    BH = Keyboard IRQ
+    CX = DLL Handle (intended for internal use by the VBE/AF driver)
+    DX = Keyboard I/O port
+  Notes:
+  Bugs:
+
+Function AX=4F23h, Subfunction BL=02h (Set Mode):
+  Description:
+    Sets the graphics mode to a certain resolution if the fullscreen driver
+    is used.  If the windowed driver is being used, a window is created large
+    enough to display the specified resolution.  The application framebuffer
+    is required to reside in a protected mode selector, and must use a 32-bit
+    linear organization (BGRx low address->high address).
+  Inputs:
+    High word of ECX = Width of desired mode
+    Low word of ECX (CX) = Height of desired mode
+    DX = PM selector containing framebuffer
+    EDI = Offset of framebuffer within PM selector specified by DX
+  Outputs:
+    AX = 004Fh
+  Notes:
+    Changes the BIOS graphics mode value at 0000:0449.  This helps routines
+    such as DJGPP's segfault handler realize we're in a graphics mode and
+    then call int 10h (trapped by the driver) to unset the graphics mode.
+  Bugs:
+    Only supports 32-bit application framebuffers and 24 and 32-bit displays.
+
+Function AX=4F23h, Subfunction BL=03h (Unset Mode):
+  Description:
+    Restores the display mode to the original Windows mode.  If the windowed
+    driver is being used, the window created in Set Mode is closed.
+  Inputs:
+  Outputs:
+    AX = 004Fh
+  Notes:
+    Restores the original BIOS graphics mode value at 0000:0449.
+  Bugs:
+    Doesn't check to see if Set Mode has been called.
+
+Function AX=4F23h, Subfunction BL=04h (Refresh Screen):
+  Description:
+    Updates the visible display from the application framebuffer.
+  Inputs:
+    None
+  Outputs:
+    AX = 004Fh
+  Notes:
+  Bugs:
+    Slow if necessary to translate between different color depths.
+
+
+Int 33h (Mouse)
+---------------
+
