@@ -28,7 +28,7 @@
 ; Any calls will be first handled here, and then redirected to the DLL. Some
 ; calls need special processing in both the DLL and here.
 ;
-; $Id: extra291.asm,v 1.11 2001/03/25 02:04:43 pete Exp $
+; $Id: extra291.asm,v 1.12 2001/03/26 00:38:53 pete Exp $
 %include "nasm_bop.inc"
 
 ;; dispatch what, where
@@ -435,7 +435,7 @@ KeyboardIRQ_Handler
 	retf	2
 
 resident_end
-;; Start of non-resident section
+; Start of non-resident section
 
 VersionMsg
 	db	'Extra BIOS services for ECE 291 v1.0, for Windows 2000',13,10
@@ -444,7 +444,7 @@ VersionMsg
 
 MustUnder2000	db	'This program requires Microsoft Windows 2000, terminating ...',13,10,'$'
 
-;; error codes from Register Module
+; error codes from Register Module
 errorNoDLL	db	'DLL not found, terminating ...',13,10,'$'
 errorNoDispatch	db	'Dispatch routine not found, terminating ...',13,10,'$'
 errorNoInit	db	'Initialization routine not found, terminating ...',13,10,'$'
@@ -455,17 +455,57 @@ errorBadPath	db	'Program directory not found, terminating ...',13,10,'$'
 
 wrongVersion	db	'DLL & COM files version mismatch, terminating ...',13,10,'$'
 errorUnknown	db	'Unknown error during module registration, terminating ...,',13,10,'$'
-Installed	db	'Extra BIOS services installed',13,10,'$'
+Installed	db	'Extra BIOS services installed.',13,10,'$'
 Uninstalled	db	'Extra BIOS services uninstalled.',13,10,'$'
+AlreadyInstalled db	'Extra BIOS services already present.',13,10,'$'
+AlreadyUninstalled db	'Extra BIOS services not present.',13,10,'$'
+RunningWindowed	db	'Running in windowed mode.',13,10,'$'
+RunningFullscreen db	'Running in fullscreen mode.',13,10,'$'
+GraphicsDisabled db	'Graphics functions disabled.',13,10,'$'
 
+; VDD input strings (dllName is appended to the ex291.com directory path)
 dllName		db	'ex291srv.dll',0
 		db	13,10,'$'
 dllDispatch	db	'Extra291Dispatch',0
 		db	13,10,'$'
 dllInitialize	db	'Extra291RegisterInit',0
 		db	13,10,'$'
+
+; variable name to scan for in environment
 envString	db	0,'EX291'
 
+; commandline parameter strings (should be caps here for case-insensitive match)
+onlyInstallStr		db	'I',0
+onlyUninstallStr	db	'U',0
+forceWindowedStr	db	'W',0
+forceFullscreenStr	db	'S',0
+noGraphicsStr		db	'NOGRAPH',0
+noNetworkStr		db	'NONET',0
+
+; loader program settings (changed via commandline parameters)
+onlyInstall	db	0
+onlyUninstall	db	0
+forceWindowed	db	0
+forceFullscreen	db	0
+noGraphics	db	0
+noNetwork	db	0
+
+; mapping between parameter strings and program settings
+cmdLineArgStr
+	dw	onlyInstallStr
+	dw	onlyUninstallStr
+	dw	forceWindowedStr
+	dw	forceFullscreenStr
+	dw	noGraphicsStr
+	dw	noNetworkStr
+	dw	0
+cmdLineArgVar
+	dw	onlyInstall
+	dw	onlyUninstall
+	dw	forceWindowed
+	dw	forceFullscreen
+	dw	noGraphics
+	dw	noNetwork
 
 ;----------------------------------------
 ; InitScreen
@@ -565,12 +605,115 @@ RemoveInt
 	ret
 
 ;----------------------------------------
-; Load_EX291_Settings
+; Load_CmdLine_Settings
+; Purpose: Parses command line.
+; Inputs: None
+; Outputs: None
+;----------------------------------------
+Load_CmdLine_Settings
+	push	ax
+	push	bx
+	push	cx
+	push	dx
+	push	si
+	push	di
+	push	es
+
+	cld
+
+	mov	ah, 62h			; [DOS] Get Current PSP Address
+	int	21h
+
+	mov	es, bx
+	mov	di, 81h			; Start of command line string
+	xor	dh, dh
+	mov	dl, [es:80h]		; Length of command line
+.loopnext:
+	test	dx, dx			; Have we reached the end of the string?
+	jz	.done
+
+	; Get to next parameter, skipping ' ', '/', '-'
+	cmp	byte [es:di], ' '
+	je	.nextchar
+	cmp	byte [es:di], '/'
+	je	.nextchar
+	cmp	byte [es:di], '-'
+	je	.nextchar
+
+	xor	bx, bx
+.nexttest:
+	mov	si, [cmdLineArgStr+bx]
+	test	si, si			; End of parameter string list
+	jz	.findspace
+
+	push	di
+	mov	cx, dx
+	inc	cx
+.loopcmpstr:
+	cmp	byte [si], 0
+	je	.isparmend
+	mov	al, [es:di]		; load character from commandline
+	and	al, 05Fh		; convert to uppercase
+	cmp	[si], al
+	jne	.mismatch
+	inc	si
+	inc	di
+	dec	cx
+	jnz	.loopcmpstr
+	; reached the end of parameter string, terminate
+	add	sp, 2
+	jmp	short .done
+
+.isparmend:
+	cmp	byte [es:di], ' '
+	je	.foundmatch
+	cmp	byte [es:di], 0Dh
+	je	.foundmatch
+
+.mismatch:
+	pop	di			; Restore old pointer
+	add	bx, 2
+	jmp	short .nexttest
+
+.foundmatch:
+	add	sp, 2			; Throw away saved pointer
+	mov	dx, cx			; Update length remaining
+
+	; set value to 1 if parameter present
+	mov	si, [cmdLineArgVar+bx]
+	mov	byte [si], 1
+
+.findspace:
+	; Get to end of this parameter
+	cmp	byte [es:di], ' '
+	je	.nextchar
+	inc	di
+	dec	dx
+	jz	.done
+	jmp	short .findspace
+
+.nextchar:
+	inc	di
+	dec	dx
+	jmp	.loopnext
+
+.done:
+	pop	es
+	pop	di
+	pop	si
+	pop	dx
+	pop	cx
+	pop	bx
+	pop	ax
+	ret
+
+;----------------------------------------
+; Load_Env_Settings
 ; Purpose: Parses EX291 environment variable.
 ; Inputs: None
 ; Outputs: ax=1 on error, 0 otherwise
 ;----------------------------------------
-Load_EX291_Settings
+Load_Env_Settings
 	push	bx
 	push	cx
 	push	si
@@ -654,7 +797,7 @@ Settings_ScreenMode:
 	mov	[WindowedMode], al
 	or	cx, 0100b
 	inc	di
-	jmp	Load_EX291_Settings.FindSettingsLoop
+	jmp	Load_Env_Settings.FindSettingsLoop
 
 Settings_Keyboard:
 	; First read Keyboard IRQ
@@ -669,7 +812,7 @@ Settings_Keyboard:
 	mov	al, [es:di+1]		; read 10's digit
 	sub	al, '0'
 	cmp	al, 9			; check range
-	ja	Load_EX291_Settings.EnvError
+	ja	Load_Env_Settings.EnvError
 	mov	ah, al			; ah=al*10
 	shl	ah, 2
 	add	ah, al
@@ -678,7 +821,7 @@ Settings_Keyboard:
 	mov	al, [es:di+bx]		; read 1's digit
 	sub	al, '0'
 	cmp	al, 9			; check range
-	ja	Load_EX291_Settings.EnvError
+	ja	Load_Env_Settings.EnvError
 	add	al, ah			; add in 10's (if any) to get IRQ
 	mov	[Keyboard_IRQ], al
 	cmp	al, 8			; high IRQ?
@@ -691,30 +834,30 @@ Settings_Keyboard:
 	inc	di
 
 	cmp	byte [es:di], ','	; Check for , delimiter
-	jne	Load_EX291_Settings.EnvError
+	jne	Load_Env_Settings.EnvError
 
 	; Read Keyboard I/O Port
 	mov	ax, 0
 	mov	bl, [es:di+3]		; get lowest nibble
 	sub	bl, '0'
 	cmp	bl, 9			; check range
-	ja	Load_EX291_Settings.EnvError
+	ja	Load_Env_Settings.EnvError
 	or	al, bl
 	mov	bl, [es:di+2]		; get middle nibble
 	sub	bl, '0'
 	cmp	bl, 9			; check range
-	ja	Load_EX291_Settings.EnvError
+	ja	Load_Env_Settings.EnvError
 	shl	bl, 4
 	or	al, bl
 	mov	bl, [es:di+1]		; get high nibble
 	sub	bl, '0'
 	cmp	bl, 9			; check range
-	ja	near Load_EX291_Settings.EnvError
+	ja	near Load_Env_Settings.EnvError
 	or	ah, bl
 	mov	[Keyboard_Port], ax
 	or	cx, 010b
 	add	di, 4			; move to next component
-	jmp	Load_EX291_Settings.FindSettingsLoop
+	jmp	Load_Env_Settings.FindSettingsLoop
 
 Settings_MouseIRQ:
 	mov	bx, 1			; bx points to 1's place
@@ -728,7 +871,7 @@ Settings_MouseIRQ:
 	mov	al, [es:di+1]		; read 10's digit
 	sub	al, '0'
 	cmp	al, 9			; check range
-	ja	near Load_EX291_Settings.EnvError
+	ja	near Load_Env_Settings.EnvError
 	mov	ah, al			; ah=al*10
 	shl	ah, 2
 	add	ah, al
@@ -737,7 +880,7 @@ Settings_MouseIRQ:
 	mov	al, [es:di+bx]		; read 1's digit
 	sub	al, '0'
 	cmp	al, 9			; check range
-	ja	near Load_EX291_Settings.EnvError
+	ja	near Load_Env_Settings.EnvError
 	add	al, ah			; add in 10's (if any) to get IRQ
 	mov	[Mouse_IRQ], al
 	cmp	al, 8			; high IRQ?
@@ -749,7 +892,7 @@ Settings_MouseIRQ:
 	or	cx, 001b		; got mouse component
 	add	di, bx			; move to next component
 	inc	di
-	jmp	Load_EX291_Settings.FindSettingsLoop
+	jmp	Load_Env_Settings.FindSettingsLoop
 
 
 ;----------------------------------------
@@ -834,6 +977,10 @@ Do_TSR_Load
 	push	cs
 	pop	ds
 
+	; parse commandline
+	call	Load_CmdLine_Settings
+
+	; start screen output
 	call	InitScreen
 
 	mov	dx, VersionMsg
@@ -872,6 +1019,14 @@ Do_TSR_Load
 	jmp	.Terminate
 
 .restore_int:
+	cmp	byte [onlyInstall], 0
+	jz	.do_restore_int
+
+	mov	dx, AlreadyInstalled
+	call	PrintStr
+	jmp	.Terminate
+
+.do_restore_int:
 	; restore interrupts
 	mov 	al, 10h            	; video Handler
 	mov	bx, vesa_info_area+VESASupp.Reserved+2
@@ -898,16 +1053,49 @@ Do_TSR_Load
 	jmp 	.Terminate
 
 .install:
+	cmp	byte [onlyUninstall], 0
+	jz	.do_install
+
+	mov	dx, AlreadyUninstalled
+	call	PrintStr
+	jmp	.Terminate
+
+.do_install:
 	; parse EX291 environment variable
-	call	Load_EX291_Settings
+	call	Load_Env_Settings
 	test	ax, ax
-	jz	.register_dll
+	jz	.check_overrides
 
 	mov	dx, errorBadEnv
 	call	PrintStr
 	jmp	.Terminate
 
+.check_overrides:
+	; override settings from command line
+	cmp	byte [forceWindowed], 0
+	jz	.check_forceFullscreen
+	mov	byte [WindowedMode], 1
+	jmp	short .register_dll
+
+.check_forceFullscreen:
+	cmp	byte [forceFullscreen], 0
+	jz	.register_dll
+	mov	byte [WindowedMode], 0
+
 .register_dll:
+	; Print what mode we're running in
+	cmp	byte [WindowedMode], 0
+	jz	.fullscreen
+
+	mov	dx, RunningWindowed
+	call	PrintStr
+	jmp	short .do_register
+
+.fullscreen:
+	mov	dx, RunningFullscreen
+	call	PrintStr
+
+.do_register:
 	; Load DLL from same directory as program
 	; first copy full pathname of program from environment
 	mov	di, temp_buf
@@ -982,9 +1170,15 @@ Do_TSR_Load
 ;	jmp 	short .Terminate
 
 .installIRQ:
-	mov	dx, Installed
-	call	PrintStr
+	; Check for disabled functionality
+	cmp	byte [noGraphics], 0
+	jz	.installGraphics
 
+	mov	dx, GraphicsDisabled
+	call	PrintStr
+	jmp	short .done
+
+.installGraphics
 	; Install 10h handler
 	mov 	al, 10h
 	mov 	di, old10h_Routine
@@ -1012,6 +1206,10 @@ Do_TSR_Load
 	call	GetInt
 	mov 	dx, KeyboardIRQ_Handler
 	call	InstallInt
+
+.done:
+	mov	dx, Installed
+	call	PrintStr
 
         ; Terminate and stay resident now
 
