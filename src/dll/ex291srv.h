@@ -16,7 +16,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: ex291srv.h,v 1.10 2001/04/11 19:12:49 pete Exp $
+   $Id: ex291srv.h,v 1.11 2001/04/11 20:49:56 pete Exp $
 */
 
 #ifndef __ex291srv_h
@@ -59,8 +59,8 @@ VOID __cdecl Socket_send(UINT, UINT, int, UINT);
 VOID __cdecl Socket_sendto(UINT, UINT, int, UINT, UINT);
 VOID __cdecl Socket_shutdown(UINT, UINT);
 VOID __cdecl Socket_create(UINT);
-VOID __cdecl Socket_gethostbyaddr(VOID);
-VOID __cdecl Socket_gethostbyname(VOID);
+VOID __cdecl Socket_gethostbyaddr(UINT);
+VOID __cdecl Socket_gethostbyname(UINT);
 VOID __cdecl Socket_gethostname(UINT, int);
 VOID __cdecl Socket_InstallCallback(VOID);
 VOID __cdecl Socket_RemoveCallback(VOID);

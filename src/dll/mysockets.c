@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mysockets.c,v 1.3 2001/04/11 19:12:49 pete Exp $
+   $Id: mysockets.c,v 1.4 2001/04/11 20:49:56 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -33,6 +33,8 @@ static BOOL SocketsReady = FALSE;
 static BOOL SocketsCallbacksEnabled = FALSE;
 static INT SocketIRQpic;
 static BYTE SocketIRQline;
+
+static VOID CopyHOSTENT(struct hostent *);
 
 BOOL InitMySockets(unsigned int InitDataOff)
 {
@@ -69,8 +71,16 @@ BOOL InitMySockets(unsigned int InitDataOff)
 	(unsigned int)SocketSettings->LastError);
     SocketSettings->NetAddr_static = programData+
 	(unsigned int)SocketSettings->NetAddr_static;
-    SocketSettings->HostEnt_static = (PMODELIB_HOSTENT *)(programData+
-	(unsigned int)SocketSettings->HostEnt_static);
+    SocketSettings->HostEnt_Name_static = programData+
+	(unsigned int)SocketSettings->HostEnt_Name_static;
+    SocketSettings->HostEnt_Aliases_static = (unsigned int *)(programData+
+	(unsigned int)SocketSettings->HostEnt_Aliases_static);
+    SocketSettings->HostEnt_AddrList_static = (unsigned int *)(programData+
+	(unsigned int)SocketSettings->HostEnt_AddrList_static);
+    SocketSettings->HostEnt_Aliases_data = programData+
+	(unsigned int)SocketSettings->HostEnt_Aliases_data;
+    SocketSettings->HostEnt_AddrList_data = (unsigned int *)(programData+
+	(unsigned int)SocketSettings->HostEnt_AddrList_data);
 
     SocketsReady = TRUE;
     return TRUE;
@@ -451,14 +461,72 @@ VOID __cdecl Socket_create(UINT Type)
     }
 }
 
-VOID __cdecl Socket_gethostbyaddr(VOID)
+static VOID CopyHOSTENT(struct hostent *retval)
 {
-    setEAX(0);
+    unsigned int i;
+
+    // copy official name
+    strncpy(SocketSettings->HostEnt_Name_static, retval->h_name,
+	SocketSettings->STRING_MAX);
+    SocketSettings->HostEnt_Name_static[SocketSettings->STRING_MAX-1] = 0;
+
+    // loop over all aliases
+    for(i=0; retval->h_aliases[i] &&
+	(i<SocketSettings->HOSTENT_ALIASES_MAX); i++) {
+	// copy string to program list
+	strncpy(SocketSettings->HostEnt_Aliases_data+
+	    i*SocketSettings->STRING_MAX, retval->h_aliases[i],
+	    SocketSettings->STRING_MAX);
+	SocketSettings->HostEnt_Aliases_data[i*SocketSettings->STRING_MAX+
+	    SocketSettings->STRING_MAX-1] = 0;
+	// add pointer to string to program aliases list
+	SocketSettings->HostEnt_Aliases_static[i] = (char *)
+	    (SocketSettings->HostEnt_Aliases_data+
+	    i*SocketSettings->STRING_MAX)-programData;
+    }
+    // zero-terminate program alias list
+    SocketSettings->HostEnt_Aliases_static[i] = 0;
+
+    // loop over all addresses
+    for(i=0; retval->h_addr_list[i] &&
+	(i<SocketSettings->HOSTENT_ADDRLIST_MAX); i++) {
+	// copy address to program list
+	SocketSettings->HostEnt_AddrList_data[i] =
+	    *((unsigned int *)retval->h_addr_list[i]);
+	// add pointer to address to program address list
+	SocketSettings->HostEnt_AddrList_static[i] = (char *)
+	    (&SocketSettings->HostEnt_AddrList_data[i])-programData;
+    }
+    // zero-terminate program alias list
+    SocketSettings->HostEnt_AddrList_static[i] = 0;
 }
 
-VOID __cdecl Socket_gethostbyname(VOID)
+VOID __cdecl Socket_gethostbyaddr(UINT Address)
 {
-    setEAX(0);
+    struct hostent *retval = gethostbyaddr((const char *)&Address, 4, PF_INET);
+
+    if(!retval) {
+	setEAX(0);
+	*SocketSettings->LastError = WSAGetLastError();
+	return;
+    }
+    CopyHOSTENT(retval);
+    setEAX(1);	// indicate valid data
+}
+
+VOID __cdecl Socket_gethostbyname(UINT pNameOff)
+{
+    char *pName = (char *)(programData + pNameOff);
+
+    struct hostent *retval = gethostbyname(pName);
+
+    if(!retval) {
+	setEAX(0);
+	*SocketSettings->LastError = WSAGetLastError();
+	return;
+    }
+    CopyHOSTENT(retval);
+    setEAX(1);	// indicate valid data
 }
 
 VOID __cdecl Socket_gethostname(UINT pNameOff, int NameLen)

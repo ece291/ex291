@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: socketdata.h,v 1.2 2001/04/07 08:03:27 pete Exp $
+   $Id: socketdata.h,v 1.3 2001/04/11 20:49:56 pete Exp $
 */
 
 #pragma pack(push, 1)
@@ -26,13 +26,6 @@ typedef struct PMODELIB_SOCKADDR
     unsigned int Address;
 } PMODELIB_SOCKADDR;
 
-typedef struct PMODELIB_HOSTENT
-{
-    char *Name;
-    char **Aliases;
-    unsigned int **AddrList;
-} PMODELIB_HOSTENT;
-
 typedef struct PMODELIB_SOCKINITDATA
 {
     unsigned short Version;
@@ -41,12 +34,11 @@ typedef struct PMODELIB_SOCKINITDATA
     unsigned int HOSTENT_ADDRLIST_MAX;
     int *LastError;
     char *NetAddr_static;
-    PMODELIB_HOSTENT *HostEnt_static;
     char *HostEnt_Name_static;
-    char *HostEnt_Aliases_static;
-    char *HostEnt_AddrList_static;
+    unsigned int *HostEnt_Aliases_static;
+    unsigned int *HostEnt_AddrList_static;
     char *HostEnt_Aliases_data;
-    char *HostEnt_AddrList_data;
+    unsigned int *HostEnt_AddrList_data;
 } PMODELIB_SOCKINITDATA;
 
 #pragma pack(pop)
