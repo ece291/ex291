@@ -1,7 +1,7 @@
 ; Protected Mode EX291 Test
 ;  By Peter Johnson, 2000-2001
 ;
-; $Id: test.asm,v 1.5 2001/03/19 08:46:02 pete Exp $
+; $Id: test.asm,v 1.6 2001/03/20 04:51:04 pete Exp $
 %include "lib291.inc"
 
 	BITS 32
@@ -40,26 +40,35 @@ _main
 
 	invoke	_FindGraphicsMode, word 640, word 480, word 32, dword 1
 	push	eax
+	invoke	_LockArea, ds, dword _kbPort, dword 2
+	invoke	_LockArea, ds, dword _kbIRQ, dword 1
+	invoke	_LockArea, ds, dword CurrentKey, dword 1
+	invoke	_LockArea, ds, dword NewKey, dword 1
+	invoke	_LockArea, cs, dword KeyboardISR, dword KeyboardISR_end-KeyboardISR
 	movzx	eax, byte [_kbINT]
 	invoke	_Install_Int, eax, dword KeyboardISR
 	pop	eax
 	invoke	_SetGraphicsMode, ax
 
-;	xor	eax, eax
-;	int	33h
+	xor	eax, eax
+	int	33h
 
-;	invoke	_Get_RMCB, dword mouse_seg, dword mouse_off, dword MouseCallback, dword 1
-;	cmp	eax, 0
+	invoke	_LockArea, ds, dword buttonstatus, dword 2
+	invoke	_LockArea, ds, dword mousex, dword 2
+	invoke	_LockArea, ds, dword mousey, dword 2
+	invoke	_LockArea, cs, dword MouseCallback, dword MouseCallback_end-MouseCallback
+	invoke	_Get_RMCB, dword mouse_seg, dword mouse_off, dword MouseCallback, dword 1
+	cmp	eax, 0
 
-;	mov	dword [DPMI_EAX], 0Ch
-;	mov	dword [DPMI_ECX], 7Fh
-;	xor	edx, edx
-;	mov	dx, [mouse_off]
-;	mov	[DPMI_EDX], edx
-;	mov	ax, [mouse_seg]
-;	mov	[DPMI_ES], ax
-;	mov	bx, 33h
-;	call	DPMI_Int
+	mov	dword [DPMI_EAX], 0Ch
+	mov	dword [DPMI_ECX], 7Fh
+	xor	edx, edx
+	mov	dx, [mouse_off]
+	mov	[DPMI_EDX], edx
+	mov	ax, [mouse_seg]
+	mov	[DPMI_ES], ax
+	mov	bx, 33h
+	call	DPMI_Int
 
 	mov	ecx, 640*480
 	xor	eax, eax
@@ -89,7 +98,7 @@ _main
 	mov	edi, [_VideoBlock]
 	rep stosd
 
-	invoke	_CopyToScreen, dword [_VideoBlock], dword 640*4, dword 0, dword 0, dword 640, dword 480, dword 0, dword 0
+	invoke	_CopyToScreen, dword [_VideoBlock], dword 640*4, dword 10, dword 10, dword 20, dword 60, dword 5, dword 5
 
 	cmp	byte [NewKey], 0
 	jz	.test2
@@ -108,6 +117,14 @@ _main
 	mov	[prevstatus], cx
 
 ;	invoke	_WritePixel, word [mousex], word [mousey], dword 0FFFFFFh
+	movzx	eax, word [mousex]
+	movzx	edx, word [mousey]
+	imul	edx, 640
+	add	edx, eax
+	shl	edx, 2
+	add	edx, [_VideoBlock]
+	mov	dword [edx], 0FFFFFFh
+
 	invoke	_CopyToScreen, dword [_VideoBlock], dword 640*4, dword 0, dword 0, dword 640, dword 480, dword 0, dword 0
 .nope:
 	cmp	byte [NewKey], 0
@@ -133,20 +150,28 @@ _main
 	mov	[prevmousex], cx
 
 ;	invoke	_WritePixel, word [mousex], word [mousey], dword 0FFFFFFh
+	movzx	eax, word [mousex]
+	movzx	edx, word [mousey]
+	imul	edx, 640
+	add	edx, eax
+	shl	edx, 2
+	add	edx, [_VideoBlock]
+	mov	dword [edx], 0FFFFFFh
+
 	invoke	_CopyToScreen, dword [_VideoBlock], dword 640*4, dword 0, dword 0, dword 640, dword 480, dword 0, dword 0
 .nope2:
 	cmp	byte [NewKey], 0
-	jz	.test4
+	jz	near .test4
 
-;	mov	dword [DPMI_EAX], 0Ch
-;	xor     edx, edx
-;	mov	[DPMI_ECX], edx
-;	mov	[DPMI_EDX], edx
-;	mov	[DPMI_ES], dx
- ;       mov     bx, 33h
-  ;      call    DPMI_Int
+	mov	dword [DPMI_EAX], 0Ch
+	xor     edx, edx
+	mov	[DPMI_ECX], edx
+	mov	[DPMI_EDX], edx
+	mov	[DPMI_ES], dx
+	mov     bx, 33h
+	call    DPMI_Int
 
-;	invoke	_Free_RMCB, word [mouse_seg], word [mouse_off]
+	invoke	_Free_RMCB, word [mouse_seg], word [mouse_off]
 
 	call	_UnsetGraphicsMode
 
@@ -186,14 +211,15 @@ proc MouseCallback
 	push	esi
 	mov	esi, [ebp+.DPMIRegsPtr]
 
-	mov	eax, [esi+DPMI_EBX_off]
+	mov	eax, [es:esi+DPMI_EBX_off]
 	mov	[buttonstatus], ax
-	mov	eax, [esi+DPMI_ECX_off]
+	mov	eax, [es:esi+DPMI_ECX_off]
 	mov	[mousex], ax
-	mov	eax, [esi+DPMI_EDX_off]
+	mov	eax, [es:esi+DPMI_EDX_off]
 	mov	[mousey], ax
 
 	pop	esi
+
 	ret
 endproc
 MouseCallback_end
