@@ -125,7 +125,7 @@ int main(int argc, char **argv)
       printf("Error: object contains unresolved external symbols (%s)\n", name);
       errors ++;
     }
-    if (strncmp(name, argv[2], strlen(argv[2])) == 0)
+    if (strncmp(name, argv[2], strlen(argv[2])+1) == 0)
     {
       if (init1_offset != -1)
       {
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
 	errors++;
       }
       init1_offset = sym[i].e_value;
-    } else if (strncmp(name, argv[3], strlen(argv[3])) == 0)
+    } else if (strncmp(name, argv[3], strlen(argv[3])+1) == 0)
     {
       if (init2_offset != -1)
       {
@@ -141,7 +141,7 @@ int main(int argc, char **argv)
 	errors++;
       }
       init2_offset = sym[i].e_value;
-    } else if (strncmp(name, argv[4], strlen(argv[4])) == 0)
+    } else if (strncmp(name, argv[4], strlen(argv[4])+1) == 0)
     {
       if (init3_offset != -1)
       {
