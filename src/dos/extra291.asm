@@ -28,7 +28,7 @@
 ; Any calls will be first handled here, and then redirected to the DLL. Some
 ; calls need special processing in both the DLL and here.
 ;
-; $Id: extra291.asm,v 1.17 2001/12/12 18:30:14 pete Exp $
+; $Id: extra291.asm,v 1.18 2002/05/03 08:47:56 pete Exp $
 %include "nasm_bop.inc"
 
 ;; dispatch what, where
@@ -521,11 +521,11 @@ resident_end
 ; Start of non-resident section
 
 VersionMsg
-	db	'Extra BIOS services for ECE 291 v1.0, for Windows 2000',13,10
-	db	'Copyright (C) 2000-2001 Peter Johnson',13,10
-	db	'BETA SOFTWARE, ABSOLUTELY NO IMPLIED OR EXPRESSED WARRANTY',13,10,'$'
+	db	'Extra BIOS services for ECE 291 v1.1, for Windows 2000/XP',13,10
+	db	'Copyright (C) 2000-2002 Peter L. B. Johnson',13,10
+	db	'ABSOLUTELY NO IMPLIED OR EXPRESSED WARRANTY',13,10,'$'
 
-MustUnder2000	db	'This program requires Microsoft Windows 2000, terminating ...',13,10,'$'
+MustUnder2000	db	'This program requires Microsoft Windows 2000/XP, terminating ...',13,10,'$'
 
 ; error codes from Register Module
 errorNoDLL	db	'DLL not found, terminating ...',13,10,'$'
