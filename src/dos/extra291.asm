@@ -28,7 +28,7 @@
 ; Any calls will be first handled here, and then redirected to the DLL. Some
 ; calls need special processing in both the DLL and here.
 ;
-; $Id: extra291.asm,v 1.4 2001/01/10 00:56:13 pete Exp $
+; $Id: extra291.asm,v 1.5 2001/01/10 07:12:03 pete Exp $
 %include "nasm_bop.inc"
 
 %macro printstr 1
@@ -477,7 +477,7 @@ Load_EX291_Settings
 	jne	.GetEnv
 
 	inc	di
-	mov	cx, 0
+	xor	cx, cx
 
 .FindSettingsLoop:			; Now parse the line like w K7,300 M9 for current settings.
 	xor	al, al			; clear windowed flag
@@ -554,7 +554,6 @@ Settings_Keyboard:
 .lowirq:
 	add	al, 8h			; low IRQ maps to 8h
 	mov	[Keyboard_INT], al
-	or	cx, 100b		; got mouse component
 	add	di, bx			; move to next component
 	inc	di
 
