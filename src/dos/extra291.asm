@@ -28,7 +28,7 @@
 ; Any calls will be first handled here, and then redirected to the DLL. Some
 ; calls need special processing in both the DLL and here.
 ;
-; $Id: extra291.asm,v 1.15 2001/04/04 20:53:36 pete Exp $
+; $Id: extra291.asm,v 1.16 2001/04/10 09:07:30 pete Exp $
 %include "nasm_bop.inc"
 
 ;; dispatch what, where
@@ -88,6 +88,7 @@
 %endmacro
 
 ALTMPX_GET_DLLHANDLE		EQU	10h
+ALTMPX_GET_SOCKETINT		EQU	11h
 
 GET_MEMORY			EQU	7001h
 GET_MODES			EQU	7002h
@@ -179,6 +180,7 @@ Interrupt2D_Handler
 	dispatchALTMPX	02h, .Uninstall
 	dispatchALTMPX	04h, .GetChainedInts
 	dispatchALTMPX	ALTMPX_GET_DLLHANDLE, .GetDLLHandle
+	dispatchALTMPX	ALTMPX_GET_SOCKETINT, .GetSocketINT
 
 	; others not implemented, return 0
 	mov	al, 0
@@ -219,6 +221,13 @@ Interrupt2D_Handler
 
 .GetDLLHandle:
 	mov	dx, [cs:dllHandle]
+
+	mov	al, 1				; Return valid
+	popf
+	retf	2
+
+.GetSocketINT:
+	mov	dl, [cs:Mouse_INT]		; FIXME
 
 	mov	al, 1				; Return valid
 	popf
