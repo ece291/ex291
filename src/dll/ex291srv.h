@@ -16,7 +16,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: ex291srv.h,v 1.8 2001/04/03 04:57:41 pete Exp $
+   $Id: ex291srv.h,v 1.9 2001/04/10 09:06:45 pete Exp $
 */
 
 #ifndef __ex291srv_h
@@ -57,6 +57,10 @@
 #define SOCKET_GETHOSTBYADDR			0x5018
 #define SOCKET_GETHOSTBYNAME			0x5019
 #define SOCKET_GETHOSTNAME			0x5020
+#define SOCKET_INSTALLCALLBACK			0x5021
+#define SOCKET_REMOVECALLBACK			0x5022
+#define SOCKET_ADDCALLBACK			0x5023
+#define SOCKET_GETCALLBACKINFO			0x5024
 
 #define VBEAF_GET_MEMORY			0x6001
 #define VBEAF_GET_MODELIST			0x6002
@@ -96,6 +100,9 @@ HINSTANCE GetInstance(VOID);
 
 BOOL	InitMySockets(unsigned int);
 VOID	CloseMySockets(VOID);
+VOID	SocketsEnableCallbacks(BYTE, BOOL);
+VOID	DoSocketsCallback(UINT, LONG);
+VOID	SocketsGetCallbackInfo(VOID);
 
 BOOL	InitDirectDraw(VOID);
 VOID	CloseDirectDraw(VOID);
@@ -115,6 +122,13 @@ HWND	GetMyWindow(VOID);
 
 DWORD WINAPI MyWndThread(LPVOID);
 LONG APIENTRY MyWndProc(HWND, UINT, UINT, LONG);
+
+BOOL	InitMyWindow2(HINSTANCE);
+VOID	CloseMyWindow2(VOID);
+HWND	GetMyWindow2(VOID);
+
+DWORD WINAPI MyWndThread2(LPVOID);
+LONG APIENTRY MyWndProc2(HWND, UINT, UINT, LONG);
 
 BOOL	InitKey(VOID);
 VOID	CloseKey(VOID);

@@ -1,7 +1,7 @@
 # Sources for EX291 VDD
 #  By Peter Johnson, 2000
 #
-# $Id: SOURCES,v 1.5 2001/04/03 04:57:41 pete Exp $
+# $Id: SOURCES,v 1.6 2001/04/10 09:06:45 pete Exp $
 
 TARGETNAME=ex291srv
 TARGETPATH=.\objfre
@@ -27,6 +27,7 @@ USE_CRTDLL=1
 SOURCES = directdraw.c   \
 	  copybuf.c      \
 	  mywindow.c     \
+	  mywindow2.c    \
           dispatch.c     \
 	  keyboard.c     \
 	  mouse.c	 \

@@ -16,7 +16,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: ex291srv.c,v 1.7 2001/04/03 04:56:55 pete Exp $
+   $Id: ex291srv.c,v 1.8 2001/04/10 09:06:45 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -44,6 +44,7 @@ BOOL WINAPI Extra291Initialize(IN HINSTANCE DllHandle, IN DWORD Reason,
 	    CloseMouse();
 	    CloseKey();
 	    CloseDirectDraw();
+	    CloseMyWindow2();
 	    CloseMySockets();
 	    break;
 	default :

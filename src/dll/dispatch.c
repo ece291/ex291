@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: dispatch.c,v 1.11 2001/04/10 06:18:01 pete Exp $
+   $Id: dispatch.c,v 1.12 2001/04/10 09:06:45 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -499,6 +499,71 @@ VOID Extra291Dispatch(VOID)
 	setEAX(0);
     }
 
+    break;
+}
+	case SOCKET_INSTALLCALLBACK:
+{
+    if(!InitMyWindow2(GetInstance())) {
+	MessageBox(NULL, "Could not initialize socket window.",
+	    "Extra BIOS Services for ECE 291", MB_OK | MB_ICONERROR);
+	setEAX(1);
+	break;
+    }
+    SocketsEnableCallbacks(getDL(), TRUE);
+    setEAX(0);
+    break;
+}
+	case SOCKET_REMOVECALLBACK:
+{
+    CloseMyWindow2();
+    SocketsEnableCallbacks(0, FALSE);
+    break;
+}
+	case SOCKET_ADDCALLBACK:
+{
+    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
+    unsigned int *EventMaskSP = (unsigned int *)(programStack + getEBP() + 12);
+
+    unsigned int Socket = *SocketSP;
+    unsigned int EventMask = *EventMaskSP;
+
+    int acteventmask = 0, retval = 0;
+
+    HWND hWnd = GetMyWindow2();
+
+    if(!hWnd) {
+	setEAX(1);
+	*SocketSettings->LastError = 0xFFFF;
+	break;
+    }
+
+    if(EventMask & 0x01)
+	acteventmask |= FD_READ;
+    if(EventMask & 0x02)
+	acteventmask |= FD_WRITE;
+    if(EventMask & 0x04)
+	acteventmask |= FD_OOB;
+    if(EventMask & 0x08)
+	acteventmask |= FD_ACCEPT;
+    if(EventMask & 0x10)
+	acteventmask |= FD_CONNECT;
+    if(EventMask & 0x20)
+	acteventmask |= FD_CLOSE;
+
+    retval = WSAAsyncSelect(Socket, hWnd, WM_USER, acteventmask);
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+    }
+
+    break;
+}
+	case SOCKET_GETCALLBACKINFO:
+{
+    SocketsGetCallbackInfo();
     break;
 }
 	case VBEAF_GET_MEMORY:
