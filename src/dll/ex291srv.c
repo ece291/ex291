@@ -16,11 +16,11 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: ex291srv.c,v 1.6 2001/03/29 23:04:58 pete Exp $
+   $Id: ex291srv.c,v 1.7 2001/04/03 04:56:55 pete Exp $
 */
 
 #include "ex291srv.h"
-  
+
 static HINSTANCE hInst;
 
 BOOL WINAPI Extra291Initialize(IN HINSTANCE DllHandle, IN DWORD Reason,
@@ -44,6 +44,7 @@ BOOL WINAPI Extra291Initialize(IN HINSTANCE DllHandle, IN DWORD Reason,
 	    CloseMouse();
 	    CloseKey();
 	    CloseDirectDraw();
+	    CloseMySockets();
 	    break;
 	default :
 	    LogMessage("Extra291Initialize: UNKNOWN CALL");
