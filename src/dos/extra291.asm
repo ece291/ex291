@@ -28,14 +28,8 @@
 ; Any calls will be first handled here, and then redirected to the DLL. Some
 ; calls need special processing in both the DLL and here.
 ;
-; $Id: extra291.asm,v 1.8 2001/03/23 01:00:01 pete Exp $
+; $Id: extra291.asm,v 1.9 2001/03/23 21:32:05 pete Exp $
 %include "nasm_bop.inc"
-
-%macro printstr 1
-	mov	ah, 9h
-	mov	dx, %1
-	int	21h
-%endmacro
 
 ;; dispatch what, where
 %macro dispatch 2
@@ -55,16 +49,6 @@
 %endmacro
 
 %macro mutex_lock 1
-;%%loop:
-;	cmp	byte [%1], 1
-;	je	%%done
-;
-;	cmp	byte [%1], 0
-;	jnz	%%loop
-;
-;	mov	byte [%1], 1
-;	jmp	short %%loop
-;%%done:
 	push	ax
 	xor	al, al
 	mov	ah, 1
@@ -109,10 +93,10 @@ DRIVER_VERSION			equ	0100h
 	jmp	Do_TSR_Load
 
 dllHandle	dw	0	; return value of Register Module, used by Dispatch 
-oldint10h	dd	0
-oldint33h	dd	0
-oldmouseirq	dd	0
-oldkeyboardirq	dd	0
+old10h_Routine		dd	0
+old33h_Routine		dd	0
+oldMouseIRQ_Routine	dd	0
+oldKeyboardIRQ_Routine	dd	0
 
 inDispatch	db	0	; These variables mapped by the VDD.  Don't move/reorder!
 VDD_int_wait	db	0
@@ -166,7 +150,7 @@ Interrupt10_Handler
 	dispatch	4F23h, .Supplemental291API
 .original:
 	popf
-	jmp	word far [cs:oldint10h]		; jump to BIOS interrupt handler
+	jmp	word far [cs:old10h_Routine]		; jump to BIOS interrupt handler
 
 .Supplemental291API:
 	dispatchAPI	00h, .GetSupplementalInfo
@@ -199,23 +183,23 @@ Interrupt10_Handler
 
 	; Pass uninstall information in reserved area
 	mov	word [es:di+VESASupp.Reserved], 1
-	mov	ax, [cs:oldint10h]
+	mov	ax, [cs:old10h_Routine]
 	mov	word [es:di+VESASupp.Reserved+2], ax
-	mov	ax, [cs:oldint10h+2]
+	mov	ax, [cs:old10h_Routine+2]
 	mov	word [es:di+VESASupp.Reserved+4], ax
-	mov	ax, [cs:oldint33h]
+	mov	ax, [cs:old33h_Routine]
 	mov	word [es:di+VESASupp.Reserved+6], ax
-	mov	ax, [cs:oldint33h+2]
+	mov	ax, [cs:old33h_Routine+2]
 	mov	word [es:di+VESASupp.Reserved+8], ax
-	mov	ax, [cs:oldmouseirq]
+	mov	ax, [cs:oldMouseIRQ_Routine]
 	mov	word [es:di+VESASupp.Reserved+10], ax
-	mov	ax, [cs:oldmouseirq+2]
+	mov	ax, [cs:oldMouseIRQ_Routine+2]
 	mov	word [es:di+VESASupp.Reserved+12], ax
 	mov	ax, [cs:Mouse_INT]
 	mov	word [es:di+VESASupp.Reserved+14], ax
-	mov	ax, [cs:oldkeyboardirq]
+	mov	ax, [cs:oldKeyboardIRQ_Routine]
 	mov	word [es:di+VESASupp.Reserved+16], ax
-	mov	ax, [cs:oldkeyboardirq+2]
+	mov	ax, [cs:oldKeyboardIRQ_Routine+2]
 	mov	word [es:di+VESASupp.Reserved+18], ax
 	mov	ax, [cs:Keyboard_INT]
 	mov	word [es:di+VESASupp.Reserved+20], ax
@@ -305,7 +289,7 @@ Interrupt10_Handler
 	pop	ax
 
 	popf
-	jmp	word far [cs:oldint10h]		; jump to BIOS interrupt handler
+	jmp	word far [cs:old10h_Routine]		; jump to BIOS interrupt handler
 
 .RefreshScreen:
 	push	ds
@@ -348,7 +332,7 @@ Interrupt33_Handler
 	jnz	.ourhandler
 
 	popf
-	jmp	word far [cs:oldint33h]		; jump to old handler
+	jmp	word far [cs:old33h_Routine]		; jump to old handler
 
 .ourhandler:
 	dispatch	MOUSE_SET_CALLBACK_PARMS, .definecallback
@@ -381,7 +365,7 @@ MouseIRQ_Handler
 	jnz	.ourhandler
 
 	popf
-	jmp	word far [cs:oldmouseirq]	; jump to old handler
+	jmp	word far [cs:oldMouseIRQ_Routine]	; jump to old handler
 
 .ourhandler:
 	
@@ -434,7 +418,7 @@ KeyboardIRQ_Handler
 	jnz	.ackpic
 
 	popf
-	jmp	word far [cs:oldkeyboardirq]	; jump to old handler
+	jmp	word far [cs:oldKeyboardIRQ_Routine]	; jump to old handler
 
 .ackpic:
 	push	ax
@@ -453,12 +437,12 @@ KeyboardIRQ_Handler
 resident_end
 ;; Start of non-resident section
 
-versionmsg1	db	'Extra BIOS services for ECE 291 v1.0, for Windows 2000',13,10,'$'
-versionmsg2	db	'Copyright (C) 2000-2001 Peter Johnson',13,10,'$'
-versionmsg3	db	'BETA SOFTWARE, ABSOLUTELY NO IMPLIED OR EXPRESSED WARRANTY',13,10,'$'
+VersionMsg
+	db	'Extra BIOS services for ECE 291 v1.0, for Windows 2000',13,10
+	db	'Copyright (C) 2000-2001 Peter Johnson',13,10
+	db	'BETA SOFTWARE, ABSOLUTELY NO IMPLIED OR EXPRESSED WARRANTY',13,10,'$'
 
-;startmsg	db	'Searching module ... ','$'
-MustUnderNT	db	'This program requires Microsoft Windows 2000, terminating ...',13,10,'$'
+MustUnder2000	db	'This program requires Microsoft Windows 2000, terminating ...',13,10,'$'
 
 ;; error codes from Register Module
 errorNoDLL	db	'DLL not found, terminating ...',13,10,'$'
@@ -467,11 +451,12 @@ errorNoInit	db	'Initialization routine not found, terminating ...',13,10,'$'
 errorNoMem	db	'Out of memory, terminating ...',13,10,'$'
 errorNoUninst	db	'Sanity check: didnt get uninstall info even though driver is installed ...',13,10,'$'
 errorBadEnv	db	'Missing or invalid EX291 environment variable, terminating ...',13,10,'$'
+errorBadPath	db	'Program directory not found, terminating ...',13,10,'$'
 
-wrongversion	db	'DLL & COM files version mismatch, terminating ...',13,10,'$'
+wrongVersion	db	'DLL & COM files version mismatch, terminating ...',13,10,'$'
 errorUnknown	db	'Unknown error during module registration, terminating ...,',13,10,'$'
-registered	db	'Extra BIOS services installed',13,10,'$'
-unregister	db	'Extra BIOS services uninstalled.',13,10,'$'
+Installed	db	'Extra BIOS services installed',13,10,'$'
+Uninstalled	db	'Extra BIOS services uninstalled.',13,10,'$'
 
 dllName		db	'ex291srv.dll',0
 		db	13,10,'$'
@@ -482,16 +467,96 @@ dllInitialize	db	'Extra291RegisterInit',0
 envString	db	0,'EX291'
 
 ;----------------------------------------
-; Load_EX291_Settings
-; Purpose: Parses EX291 environment variable.
+; PrintStr
+; Purpose: Prints a string to the screen.
+; Inputs: dx=offset of string to print
+; Outputs: None
 ;----------------------------------------
-Load_EX291_Settings
+PrintStr
+	push	ax
+	mov	ah, 9h			; [DOS] Write String to Standard Output
+	int	21h
+	pop	ax
+	ret
+
+;----------------------------------------
+; InstallInt
+; Purpose: Installs an interrupt handler.
+; Inputs: al=interrupt number
+;         dx=offset of handler function
+; Outputs: None
+;----------------------------------------
+InstallInt
+	push	ax
+	push	ds
+
+	mov 	ah, SET_INTERRUPT_VECTOR
 	push	cs
 	pop	ds
+	int 	21h
 
-	mov	di, 80h
-	mov	ah, 51h
-	int	21h			; get Program Segment Prefix
+	pop	ds
+	pop	ax
+	ret
+
+;----------------------------------------
+; GetInt
+; Purpose: Gets address of current interupt handler routine.
+; Inputs: al=interrupt number
+;         di=offset of offset/segment pair to put original routine address in.
+; Outputs: None
+;----------------------------------------
+GetInt
+	push	ax
+	push	bx
+	push	es
+
+	mov 	ah, GET_INTERRUPT_VECTOR
+	int 	21h
+	mov 	[di], bx
+	mov 	[di+2], es
+
+	pop	es
+	pop	bx
+	pop	ax
+	ret
+
+;----------------------------------------
+; RemoveInt
+; Purpose: Uninstalls an interrupt handler.
+; Inputs: al=interrupt number
+;         bx=offset of offset/segment pair.
+; Outputs: None
+;----------------------------------------
+RemoveInt
+	push	ax
+	push	dx
+	push	ds
+
+	mov 	ah, SET_INTERRUPT_VECTOR
+	lds	dx, [bx]
+	int 	21h
+
+	pop	ds
+	pop	dx
+	pop	ax
+	ret
+
+;----------------------------------------
+; Load_EX291_Settings
+; Purpose: Parses EX291 environment variable.
+; Inputs: None
+; Outputs: ax=1 on error, 0 otherwise
+;----------------------------------------
+Load_EX291_Settings
+	push	bx
+	push	cx
+	push	si
+	push	di
+	push	es
+
+	mov	ah, 62h			; [DOS] Get Current PSP Address
+	int	21h
 
 	mov	es, bx
 	mov	ax, [es:002Ch]		; PSP:002Ch = environment's segment
@@ -549,11 +614,18 @@ Load_EX291_Settings
 
 .AllFound:
 	xor	ax, ax
-	ret
+	jmp	short .Return
 
 .EnvError:
 	xor	ax, ax
 	inc	ax
+
+.Return:
+	pop	es
+	pop	di
+	pop	si
+	pop	cx
+	pop	bx
 	ret
 
 Settings_ScreenMode:
@@ -575,7 +647,7 @@ Settings_Keyboard:
 	mov	al, [es:di+1]		; read 10's digit
 	sub	al, '0'
 	cmp	al, 9			; check range
-	ja	near .EnvError
+	ja	Load_EX291_Settings.EnvError
 	mov	ah, al			; ah=al*10
 	shl	ah, 2
 	add	ah, al
@@ -584,7 +656,7 @@ Settings_Keyboard:
 	mov	al, [es:di+bx]		; read 1's digit
 	sub	al, '0'
 	cmp	al, 9			; check range
-	ja	near .EnvError
+	ja	Load_EX291_Settings.EnvError
 	add	al, ah			; add in 10's (if any) to get IRQ
 	mov	[Keyboard_IRQ], al
 	cmp	al, 8			; high IRQ?
@@ -597,34 +669,30 @@ Settings_Keyboard:
 	inc	di
 
 	cmp	byte [es:di], ','	; Check for , delimiter
-	jne	.EnvError
+	jne	Load_EX291_Settings.EnvError
 
 	; Read Keyboard I/O Port
 	mov	ax, 0
 	mov	bl, [es:di+3]		; get lowest nibble
 	sub	bl, '0'
 	cmp	bl, 9			; check range
-	ja	.EnvError
+	ja	Load_EX291_Settings.EnvError
 	or	al, bl
 	mov	bl, [es:di+2]		; get middle nibble
 	sub	bl, '0'
 	cmp	bl, 9			; check range
-	ja	.EnvError
+	ja	Load_EX291_Settings.EnvError
 	shl	bl, 4
 	or	al, bl
 	mov	bl, [es:di+1]		; get high nibble
 	sub	bl, '0'
 	cmp	bl, 9			; check range
-	ja	.EnvError
+	ja	near Load_EX291_Settings.EnvError
 	or	ah, bl
 	mov	[Keyboard_Port], ax
 	or	cx, 010b
 	add	di, 4			; move to next component
 	jmp	Load_EX291_Settings.FindSettingsLoop
-.EnvError:
-	xor	ax, ax
-	inc	ax
-	ret
 
 Settings_MouseIRQ:
 	mov	bx, 1			; bx points to 1's place
@@ -638,7 +706,7 @@ Settings_MouseIRQ:
 	mov	al, [es:di+1]		; read 10's digit
 	sub	al, '0'
 	cmp	al, 9			; check range
-	ja	.EnvError
+	ja	near Load_EX291_Settings.EnvError
 	mov	ah, al			; ah=al*10
 	shl	ah, 2
 	add	ah, al
@@ -647,7 +715,7 @@ Settings_MouseIRQ:
 	mov	al, [es:di+bx]		; read 1's digit
 	sub	al, '0'
 	cmp	al, 9			; check range
-	ja	.EnvError
+	ja	near Load_EX291_Settings.EnvError
 	add	al, ah			; add in 10's (if any) to get IRQ
 	mov	[Mouse_IRQ], al
 	cmp	al, 8			; high IRQ?
@@ -660,9 +728,79 @@ Settings_MouseIRQ:
 	add	di, bx			; move to next component
 	inc	di
 	jmp	Load_EX291_Settings.FindSettingsLoop
-.EnvError:
+
+
+;----------------------------------------
+; Build_DLL_Name
+; Purpose: Determines full pathname of DLL file
+; Inputs: di, offset of destination buffer to put pathname in
+; Outputs: ax=1 on error, 0 otherwise
+;----------------------------------------
+Build_DLL_Name
+	push	bx
+	push	cx
+	push	si
+	push	di
+	push	es
+
+	mov	ah, 62h			; [DOS] Get Current PSP Address
+	int	21h
+
+	mov	es, bx
+	mov	ax, [es:002Ch]		; PSP:002Ch = environment's segment
+	mov	es, ax
+
+	; Scan until we reach the end of the environment data (two 0's)
+	mov	si, -1
+.findendenv
+	inc	si
+	cmp	byte [es:si], 0
+	jnz	.findendenv
+	inc	si
+	cmp	byte [es:si], 0
+	jnz	.findendenv
+
+	; Copy zero-terminated pathname from there+3 to buffer
+	add	si, 3
+.argv0copy:
+	mov	al, [es:si]
+	mov	[di], al
+	inc	si
+	inc	di
+	or	al, al
+	jnz	.argv0copy
+
+	; Find trailing slash before the filename
+.findlastslash:
+	cmp	byte [di], '/'
+	je	.lastslashfound
+	cmp	byte [di], '\'
+	je	.lastslashfound
+	cmp	di, temp_buf
+	je	.error
+	dec	di
+	jmp	short .findlastslash
+.lastslashfound:
+	inc	di
+
+	; Replace filename with dllName, and terminate
+	mov	ax, cs
+	mov	es, ax
+	mov	cx, 15
+	mov	si, dllName
+	rep	movsb
+
+	xor	ax, ax
+	jmp	short .done
+.error:
 	xor	ax, ax
 	inc	ax
+.done:
+	pop	es
+	pop	di
+	pop	si
+	pop	cx
+	pop	bx
 	ret
 
 
@@ -674,17 +812,17 @@ Do_TSR_Load
 	push	cs
 	pop	ds
 
-	printstr   versionmsg1
-	printstr   versionmsg2
-	printstr   versionmsg3
+	mov	dx, VersionMsg
+	call	PrintStr
 
-	; check presence of Windows NT
+	; check presence of Windows NT/2000
 	mov   	ax, GET_TRUE_VERSION_NUMBER
 	int   	21h
 	cmp	bx, 3205h
 	je	.check_presence
 
-	printstr MustUnderNT
+	mov	dx, MustUnder2000
+	call	PrintStr
         jmp 	.Terminate	
 
 .check_presence:
@@ -705,40 +843,34 @@ Do_TSR_Load
 	cmp	word [vesa_info_area+VESASupp.Reserved], 1	; Did we get the uninstall info?
 	je	.restore_int
 
-        printstr errorNoUninst
+	mov	dx, errorNoUninst
+	call	PrintStr
 	jmp	.Terminate
 
 .restore_int:
 	; restore interrupts
-	mov 	ah, SET_INTERRUPT_VECTOR
 	mov 	al, 10h            	; video Handler
-	lds	dx, [vesa_info_area+VESASupp.Reserved+2]
-	int 	21h
+	mov	bx, vesa_info_area+VESASupp.Reserved+2
+	call	RemoveInt
 
-	mov 	ah, SET_INTERRUPT_VECTOR
 	mov 	al, 33h            	; mouse Handler
-	lds	dx, [vesa_info_area+VESASupp.Reserved+6]
-	int 	21h
+	mov	bx, vesa_info_area+VESASupp.Reserved+6
+	call	RemoveInt
 
-	mov 	ah, SET_INTERRUPT_VECTOR
 	mov 	al, [vesa_info_area+VESASupp.Reserved+14]	; mouse IRQ Handler
-	lds	dx, [vesa_info_area+VESASupp.Reserved+10]
-	int 	21h
+	mov	bx, vesa_info_area+VESASupp.Reserved+10
+	call	RemoveInt
 
-	mov 	ah, SET_INTERRUPT_VECTOR
 	mov 	al, [vesa_info_area+VESASupp.Reserved+20]	; keyboard IRQ Handler
-	lds	dx, [vesa_info_area+VESASupp.Reserved+16]
-	int 	21h
+	mov	bx, vesa_info_area+VESASupp.Reserved+16
+	call	RemoveInt
 
 	; release VDD
-	push	cs
-	pop	ds
 	mov	ax, [vesa_info_area+VESASupp.Reserved+22]
 	VDD_UnRegister
 
-	push	cs
-	pop	ds
-	printstr unregister
+	mov	dx, Uninstalled
+	call	PrintStr
 	jmp 	.Terminate
 
 .install:
@@ -747,63 +879,25 @@ Do_TSR_Load
 	test	ax, ax
 	jz	.register_dll
 
-	printstr errorBadEnv
+	mov	dx, errorBadEnv
+	call	PrintStr
 	jmp	.Terminate
 
 .register_dll:
 	; Load DLL from same directory as program
 	; first copy full pathname of program from environment
-	mov	di, 80h
-	mov	ah, 51h
-	int	21h			; get Program Segment Prefix
-
-	mov	es, bx
-	mov	ax, [es:002Ch]		; PSP:002Ch = environment's segment
-	mov	es, ax
-
-	; Scan until we reach the end of the environment data (two 0's)
-	mov	si, -1
-.findendenv
-	inc	si
-	cmp	byte [es:si], 0
-	jnz	.findendenv
-	inc	si
-	cmp	byte [es:si], 0
-	jnz	.findendenv
-
-	; Copy zero-terminated pathname from there+3 to temporary buffer
-	add	si, 3
 	mov	di, temp_buf
-.argv0copy:
-	mov	al, [es:si]
-	mov	[di], al
-	inc	si
-	inc	di
-	or	al, al
-	jnz	.argv0copy
+	call	Build_DLL_Name
+	test	ax, ax
+	jz	.registerDLL
 
-	; Find trailing slash before the filename
-.findlastslash:
-	cmp	byte [di], '/'
-	je	.lastslashfound
-	cmp	byte [di], '\'
-	je	.lastslashfound
-	cmp	di, temp_buf
-	je	.registerError
-	dec	di
-	jmp	short .findlastslash
-.lastslashfound:
-	inc	di
+	mov	dx, errorBadPath
+	call	PrintStr
+	jmp	.Terminate
 
-	; Replace filename with dllName, and terminate
-	push	cs
-	pop	es
-	mov	cx, 15
-	mov	si, dllName
-	rep	movsb
-
-	stc
+.registerDLL:
 	; register Our DLL - From VDD guide for Application Based Intercepts
+	stc
 	mov 	ax, 0
 	mov 	si, temp_buf          	;dll name
 	mov 	di, dllInitialize	;init routine
@@ -814,26 +908,34 @@ Do_TSR_Load
 .registerError:
         cmp 	ax, 1
         jne 	.noterror1
-       	printstr errorNoDLL
+	mov	dx, errorNoDLL
+       	call	PrintStr
        	jmp 	short .Terminate
 .noterror1:
         cmp 	ax, 2
 	jne	.noterror2
-        printstr dllDispatch
-        printstr errorNoDispatch
+	mov	dx, dllDispatch
+        call	PrintStr
+	mov	dx, errorNoDispatch
+	call	PrintStr
         jmp 	short .Terminate
 .noterror2:
         cmp 	ax, 3
         jne 	.noterror3
-        printstr dllInitialize
-        printstr errorNoInit
+	mov	dx, dllInitialize
+	call	PrintStr
+	mov	dx, errorNoInit
+	call	PrintStr
         jmp 	short .Terminate
 .noterror3:
         cmp 	ax, 4
         jne 	.noterror4
-        printstr errorNoMem
+	mov	dx, errorNoMem
+	call	PrintStr
+	jmp	short .Terminate
 .noterror4:
-	printstr errorUnknown
+	mov	dx, errorUnknown
+	call	PrintStr
 
 .Terminate:
         mov 	ah, TERMINATE_PROGRAM
@@ -856,62 +958,36 @@ Do_TSR_Load
 ;	jmp 	short .Terminate
 
 .installIRQ:
-	printstr registered
+	mov	dx, Installed
+	call	PrintStr
 
 	; Install 10h handler
-	mov 	ah, GET_INTERRUPT_VECTOR
 	mov 	al, 10h
-	int 	21h
-	mov 	[oldint10h], bx
-	mov 	[oldint10h+2], es
-	mov 	ah, SET_INTERRUPT_VECTOR
-	mov 	al, 10h
-	push	cs
-	pop	ds
+	mov 	di, old10h_Routine
+	call	GetInt
 	mov 	dx, Interrupt10_Handler
-	int 	21h
+	call	InstallInt
 
 	; Install 33h handler
-	mov 	ah, GET_INTERRUPT_VECTOR
 	mov 	al, 33h
-	int 	21h
-	mov 	[oldint33h], bx
-	mov 	[oldint33h+2], es
-	mov 	ah, SET_INTERRUPT_VECTOR
-	mov 	al, 33h
-	push	cs
-	pop	ds
+	mov	di, old33h_Routine
+	call	GetInt
 	mov 	dx, Interrupt33_Handler
-	int 	21h
+	call	InstallInt
 
 	; Install mouse IRQ handler
-	mov 	ah, GET_INTERRUPT_VECTOR
 	mov 	al, [Mouse_INT]
-	int 	21h
-	mov 	[oldmouseirq], bx
-	mov 	[oldmouseirq+2], es
-	mov 	ah, SET_INTERRUPT_VECTOR
-	mov 	al, [Mouse_INT]
-	push	cs
-	pop	ds
+	mov 	di, oldMouseIRQ_Routine
+	call	GetInt
 	mov 	dx, MouseIRQ_Handler
-	int 	21h
+	call	InstallInt
 
 	; Install keyboard IRQ handler
-	mov 	ah, GET_INTERRUPT_VECTOR
 	mov 	al, [Keyboard_INT]
-	int 	21h
-	mov 	[oldkeyboardirq], bx
-	mov 	[oldkeyboardirq+2], es
-	mov 	ah, SET_INTERRUPT_VECTOR
-	mov 	al, [Keyboard_INT]
-	push	cs
-	pop	ds
+	mov 	di, oldKeyboardIRQ_Routine
+	call	GetInt
 	mov 	dx, KeyboardIRQ_Handler
-	int 	21h
-
-	push	cs
-	pop	ds
+	call	InstallInt
 
         ; Terminate and stay resident now
 
