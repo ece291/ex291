@@ -1,4 +1,6 @@
 buildfre.log 
+buildfre.wrn 
+buildfre.err 
 *.sw* 
 obj 
 objfre 
