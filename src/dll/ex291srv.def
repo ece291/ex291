@@ -1,7 +1,5 @@
 LIBRARY VDD
 
-DESCRIPTION 'Extra BIOS Services for ECE 291, for Windows NT/2000'
-
 EXPORTS
     Extra291Initialize		@1
     Extra291RegisterInit
