@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: dispatch.c,v 1.7 2001/03/19 17:04:32 pete Exp $
+   $Id: dispatch.c,v 1.8 2001/04/03 04:17:36 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -42,11 +42,481 @@ int VBEAF_width = 0;
 int VBEAF_height = 0;
 int VBEAF_depth = 0;
 
+static USHORT programDataSel;
+static PBYTE programData = 0;
+static USHORT programStackSel;
+static PBYTE programStack = 0;
+static int *SocketLastError = 0;
+static PMODELIB_SOCKINITDATA *SocketSettings;
+
 VOID Extra291Dispatch(VOID)
 {
     WORD regAX = HIWORD(getEAX());
 
     switch (regAX) {
+	case SOCKET_INIT:
+{
+    programDataSel = getDS();
+    programData = (PBYTE) VdmMapFlat(programDataSel, 0, VDM_PM);
+    programStackSel = getSS();
+    programStack = (PBYTE) VdmMapFlat(programStackSel, 0, VDM_PM);
+
+    SocketSettings = (PMODELIB_SOCKINITDATA *)(programData+getECX());
+    SocketSettings->LastError = (int *)(programData+
+	(unsigned int)SocketSettings->LastError);
+    SocketSettings->NetAddr_static = programData+
+	(unsigned int)SocketSettings->NetAddr_static;
+    SocketSettings->HostEnt_static = (PMODELIB_HOSTENT *)(programData+
+	(unsigned int)SocketSettings->HostEnt_static);
+    break;
+}
+	case SOCKET_EXIT:
+{
+    VdmUnmapFlat(programDataSel, 0, programData, VDM_PM);
+    programData = 0;
+    VdmUnmapFlat(programStackSel, 0, programStack, VDM_PM);
+    programStack = 0;
+    break;
+}
+	case SOCKET_ACCEPT:
+{
+    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
+    unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 12);
+    unsigned int *pNameLenSP = (unsigned int *)(programStack + getEBP() + 16);
+
+    unsigned int Socket = *SocketSP;
+    PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + *pNameSP);
+    int *pNameLen = (int *)(programData + *pNameLenSP);
+
+    struct sockaddr_in in_Name;
+    unsigned int retval;
+
+    in_Name.sin_family = AF_INET;
+    in_Name.sin_port = pName->Port;
+    in_Name.sin_addr.s_addr = pName->Address;
+
+    retval = accept(Socket, (struct sockaddr *)&in_Name, pNameLen);
+
+    if(retval == INVALID_SOCKET) {
+	setEAX(0xFFFFFFFF);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(retval);
+	pName->Port = in_Name.sin_port;
+	pName->Address = in_Name.sin_addr.s_addr;
+    }
+
+    break;
+}
+	case SOCKET_BIND:
+{
+    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
+    unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 12);
+    int *NameLenSP = (int *)(programStack + getEBP() + 16);
+
+    unsigned int Socket = *SocketSP;
+    PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + *pNameSP);
+    int NameLen = *NameLenSP;
+
+    struct sockaddr_in in_Name;
+    int retval;
+
+    in_Name.sin_family = AF_INET;
+    in_Name.sin_port = pName->Port;
+    in_Name.sin_addr.s_addr = pName->Address;
+
+    retval = bind(Socket, (const struct sockaddr *)&in_Name, NameLen);
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+    }
+
+    break;
+}
+	case SOCKET_CLOSE:
+{
+    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
+
+    unsigned int Socket = *SocketSP;
+
+    int retval = closesocket(Socket);
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+    }
+
+    break;
+}
+	case SOCKET_CONNECT:
+{
+    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
+    unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 12);
+    int *NameLenSP = (int *)(programStack + getEBP() + 16);
+
+    unsigned int Socket = *SocketSP;
+    PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + *pNameSP);
+    int NameLen = *NameLenSP;
+
+    struct sockaddr_in in_Name;
+    int retval;
+
+    in_Name.sin_family = AF_INET;
+    in_Name.sin_port = pName->Port;
+    in_Name.sin_addr.s_addr = pName->Address;
+
+    retval = connect(Socket, (const struct sockaddr *)&in_Name, NameLen);
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+    }
+
+    break;
+}
+	case SOCKET_GETPEERNAME:
+{
+    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
+    unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 12);
+    unsigned int *pNameLenSP = (unsigned int *)(programStack + getEBP() + 16);
+
+    unsigned int Socket = *SocketSP;
+    PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + *pNameSP);
+    int *pNameLen = (int *)(programData + *pNameLenSP);
+
+    struct sockaddr_in in_Name;
+    int retval;
+
+    in_Name.sin_family = AF_INET;
+    in_Name.sin_port = pName->Port;
+    in_Name.sin_addr.s_addr = pName->Address;
+
+    retval = getpeername(Socket, (struct sockaddr *)&in_Name, pNameLen);
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+	pName->Port = in_Name.sin_port;
+	pName->Address = in_Name.sin_addr.s_addr;
+    }
+
+    break;
+}
+	case SOCKET_GETSOCKNAME:
+{
+    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
+    unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 12);
+    unsigned int *pNameLenSP = (unsigned int *)(programStack + getEBP() + 16);
+
+    unsigned int Socket = *SocketSP;
+    PMODELIB_SOCKADDR *pName = (PMODELIB_SOCKADDR *)(programData + *pNameSP);
+    int *pNameLen = (int *)(programData + *pNameLenSP);
+
+    struct sockaddr_in in_Name;
+    int retval;
+
+    in_Name.sin_family = AF_INET;
+    in_Name.sin_port = pName->Port;
+    in_Name.sin_addr.s_addr = pName->Address;
+
+    retval = getsockname(Socket, (struct sockaddr *)&in_Name, pNameLen);
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+	pName->Port = in_Name.sin_port;
+	pName->Address = in_Name.sin_addr.s_addr;
+    }
+
+    break;
+}
+	case SOCKET_INETADDR:
+{
+    unsigned int *pDottedAddrSP = (unsigned int *)(programStack + getEBP() + 8);
+
+    char *pDottedAddr = (char *)(programData + *pDottedAddrSP);
+
+    unsigned int retval = inet_addr(pDottedAddr);
+
+    if(retval == INVALID_SOCKET) {
+	setEAX(0xFFFFFFFF);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(retval);
+    }
+
+    break;
+}
+	case SOCKET_INETNTOA:
+{
+    unsigned int *AddressSP = (unsigned int *)(programStack + getEBP() + 8);
+
+    unsigned int Address = *AddressSP;
+
+    struct in_addr in;
+    char *retval;
+
+    in.s_addr = Address;
+
+    retval = inet_ntoa(in);
+
+    strncpy(SocketSettings->NetAddr_static, retval,
+	SocketSettings->STRING_MAX);
+    SocketSettings->NetAddr_static[SocketSettings->STRING_MAX-1] = 0;
+
+    break;
+}
+	case SOCKET_LISTEN:
+{
+    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
+    int *BackLogSP = (int *)(programStack + getEBP() + 12);
+
+    unsigned int Socket = *SocketSP;
+    int BackLog = *BackLogSP;
+
+    int retval = listen(Socket, BackLog);
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+    }
+
+    break;
+}
+	case SOCKET_RECV:
+{
+    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
+    unsigned int *pBufSP = (unsigned int *)(programStack + getEBP() + 12);
+    int *MaxLenSP = (int *)(programStack + getEBP() + 16);
+    unsigned int *FlagsSP = (unsigned int *)(programStack + getEBP() + 20);
+
+    unsigned int Socket = *SocketSP;
+    unsigned char *pBuf = (unsigned char *)(programData + *pBufSP);
+    int MaxLen = *MaxLenSP;
+    unsigned int Flags = *FlagsSP;
+
+    int actflags = 0;
+    int retval;
+
+    if(Flags & 0x01)
+	actflags |= MSG_PEEK;
+    if(Flags & 0x02)
+	actflags |= MSG_OOB;
+
+    retval = recv(Socket, pBuf, MaxLen, actflags);
+
+    if(retval < 0) {
+	setEAX(0xFFFFFFFF);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(retval);
+    }
+
+    break;
+}
+	case SOCKET_RECVFROM:
+{
+    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
+    unsigned int *pBufSP = (unsigned int *)(programStack + getEBP() + 12);
+    int *MaxLenSP = (int *)(programStack + getEBP() + 16);
+    unsigned int *FlagsSP = (unsigned int *)(programStack + getEBP() + 20);
+    unsigned int *pFromSP = (unsigned int *)(programStack + getEBP() + 24);
+    unsigned int *pFromLenSP = (unsigned int *)(programStack + getEBP() + 28);
+
+    unsigned int Socket = *SocketSP;
+    unsigned char *pBuf = (unsigned char *)(programData + *pBufSP);
+    int MaxLen = *MaxLenSP;
+    unsigned int Flags = *FlagsSP;
+    PMODELIB_SOCKADDR *pFrom = (PMODELIB_SOCKADDR *)(programData + *pFromSP);
+    int *pFromLen = (int *)(programData + *pFromLenSP);
+
+    int actflags = 0;
+    struct sockaddr_in in_From;
+    int retval;
+
+    if(Flags & 0x01)
+	actflags |= MSG_PEEK;
+    if(Flags & 0x02)
+	actflags |= MSG_OOB;
+
+    in_From.sin_family = AF_INET;
+    in_From.sin_port = pFrom->Port;
+    in_From.sin_addr.s_addr = pFrom->Address;
+
+    retval = recvfrom(Socket, pBuf, MaxLen, actflags,
+	(struct sockaddr *)&in_From, pFromLen);
+
+    if(retval < 0) {
+	setEAX(0xFFFFFFFF);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(retval);
+	pFrom->Port = in_From.sin_port;
+	pFrom->Address = in_From.sin_addr.s_addr;
+    }
+
+    break;
+}
+	case SOCKET_SEND:
+{
+    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
+    unsigned int *pBufSP = (unsigned int *)(programStack + getEBP() + 12);
+    int *LenSP = (int *)(programStack + getEBP() + 16);
+    unsigned int *FlagsSP = (unsigned int *)(programStack + getEBP() + 20);
+
+    unsigned int Socket = *SocketSP;
+    unsigned char *pBuf = (unsigned char *)(programData + *pBufSP);
+    int Len = *LenSP;
+    unsigned int Flags = *FlagsSP;
+
+    int actflags = 0;
+    int retval;
+
+    if(Flags & 0x01)
+	actflags |= MSG_OOB;
+
+    retval = send(Socket, pBuf, Len, actflags);
+
+    if(retval < 0) {
+	setEAX(0xFFFFFFFF);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(retval);
+    }
+
+    break;
+}
+	case SOCKET_SENDTO:
+{
+    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
+    unsigned int *pBufSP = (unsigned int *)(programStack + getEBP() + 12);
+    int *LenSP = (int *)(programStack + getEBP() + 16);
+    unsigned int *FlagsSP = (unsigned int *)(programStack + getEBP() + 20);
+    unsigned int *pToSP = (unsigned int *)(programStack + getEBP() + 24);
+    int *ToLenSP = (int *)(programStack + getEBP() + 28);
+
+    unsigned int Socket = *SocketSP;
+    unsigned char *pBuf = (unsigned char *)(programData + *pBufSP);
+    int Len = *LenSP;
+    unsigned int Flags = *FlagsSP;
+    PMODELIB_SOCKADDR *pTo = (PMODELIB_SOCKADDR *)(programData + *pToSP);
+    int ToLen = *ToLenSP;
+
+    int actflags = 0;
+    struct sockaddr_in in_To;
+    int retval;
+
+    if(Flags & 0x01)
+	actflags |= MSG_OOB;
+
+    in_To.sin_family = AF_INET;
+    in_To.sin_port = pTo->Port;
+    in_To.sin_addr.s_addr = pTo->Address;
+
+    retval = sendto(Socket, pBuf, Len, actflags,
+	(const struct sockaddr *)&in_To, ToLen);
+
+    if(retval < 0) {
+	setEAX(0xFFFFFFFF);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(retval);
+    }
+
+    break;
+}
+	case SOCKET_SHUTDOWN:
+{
+    unsigned int *SocketSP = (unsigned int *)(programStack + getEBP() + 8);
+    unsigned int *FlagsSP = (unsigned int *)(programStack + getEBP() + 12);
+
+    unsigned int Socket = *SocketSP;
+    unsigned int Flags = *FlagsSP;
+
+    int actflags = Flags - 1;
+
+    int retval = shutdown(Socket, actflags);
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+    }
+
+    break;
+}
+	case SOCKET_CREATE:
+{
+    unsigned int *TypeSP = (unsigned int *)(programStack + getEBP() + 8);
+
+    unsigned int Type = *TypeSP;
+
+    int acttype = 0;
+    unsigned int retval;
+
+    switch(Type) {
+	case 1:
+	    acttype = SOCK_STREAM;
+	    break;
+	case 2:
+	    acttype = SOCK_DGRAM;
+	    break;
+    }
+
+    retval = socket(AF_INET, acttype, IPPROTO_IP);
+
+    if(retval == INVALID_SOCKET) {
+	setEAX(0xFFFFFFFF);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(retval);
+    }
+
+    break;
+}
+	case SOCKET_GETHOSTBYADDR:
+{
+    setEAX(0);
+    break;
+}
+	case SOCKET_GETHOSTBYNAME:
+{
+    setEAX(0);
+    break;
+}
+	case SOCKET_GETHOSTNAME:
+{
+    unsigned int *pNameSP = (unsigned int *)(programStack + getEBP() + 8);
+    int *NameLenSP = (int *)(programStack + getEBP() + 12);
+
+    char *pName = (char *)(programData + *pNameSP);
+    int NameLen = *NameLenSP;
+
+    int retval = gethostname(pName, NameLen);
+
+    if(retval != 0) {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    } else {
+	setEAX(0);
+    }
+
+    break;
+}
 	case VBEAF_GET_MEMORY:
 {
     USHORT data_sel = getFS();

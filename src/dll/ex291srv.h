@@ -16,7 +16,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: ex291srv.h,v 1.6 2001/03/29 23:04:58 pete Exp $
+   $Id: ex291srv.h,v 1.7 2001/04/03 04:17:36 pete Exp $
 */
 
 #ifndef __ex291srv_h
@@ -25,6 +25,8 @@
 #define _WINDOWS
 #include <windows.h>
 
+#include <winsock.h>
+
 #include <stdarg.h>
 
 #include <vddsvc.h>		//mem buf translation
@@ -32,6 +34,29 @@
 #include "mymutex.h"
 
 #include "vbeafdata.h"
+
+#include "socketdata.h"
+
+#define SOCKET_INIT				0x5001
+#define SOCKET_EXIT				0x5002
+#define SOCKET_ACCEPT				0x5003
+#define SOCKET_BIND				0x5004
+#define SOCKET_CLOSE				0x5005
+#define SOCKET_CONNECT				0x5006
+#define SOCKET_GETPEERNAME			0x5007
+#define SOCKET_GETSOCKNAME			0x5008
+#define SOCKET_INETADDR				0x5009
+#define SOCKET_INETNTOA				0x5010
+#define SOCKET_LISTEN				0x5011
+#define SOCKET_RECV				0x5012
+#define SOCKET_RECVFROM				0x5013
+#define SOCKET_SEND				0x5014
+#define SOCKET_SENDTO				0x5015
+#define SOCKET_SHUTDOWN				0x5016
+#define SOCKET_CREATE				0x5017
+#define SOCKET_GETHOSTBYADDR			0x5018
+#define SOCKET_GETHOSTBYNAME			0x5019
+#define SOCKET_GETHOSTNAME			0x5020
 
 #define VBEAF_GET_MEMORY			0x6001
 #define VBEAF_GET_MODELIST			0x6002
