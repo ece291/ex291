@@ -4,7 +4,7 @@
 # Based on FreeBE/AF makefile.  The freebe/ subdirectory contains the FreeBE/AF
 #  build tools and helper functions.
 #
-# $Id: Makefile,v 1.1 2001/01/08 07:07:39 pete Exp $
+# $Id: Makefile,v 1.2 2001/01/08 18:22:42 pete Exp $
 
 TARGETDIR = ../../bin
 
@@ -29,8 +29,8 @@ freebe/drvgen.exe: freebe/drvgen.o drvhdr.o
 %.o: %.c
 	gcc $(CFLAGS) $(IFLAGS) -o $@ -c $<
 
-%.o: %.s
-	gcc -x assembler-with-cpp -o $@ -c $<
+%.o: %.asm
+	nasm -f coff $<
 
 clean:
 	rm -f *.o freebe/drvgen.exe $(TARGETS)
