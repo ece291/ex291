@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mywindow.c,v 1.5 2001/01/10 06:03:50 pete Exp $
+   $Id: mywindow.c,v 1.6 2001/02/28 20:35:27 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -162,6 +162,8 @@ LONG APIENTRY MyWndProc(HWND hWnd, UINT message, UINT wParam, LONG lParam)
 	// Keyboard Handling
 	case WM_KEYDOWN:
 	case WM_SYSKEYDOWN:
+		if(wParam==VK_PAUSE)
+			lParam=0xe1<<16;
 		AddKey (lParam, FALSE);
 		return 0;
 	
