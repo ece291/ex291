@@ -2,7 +2,6 @@ Prty  Diff  Description
 --------------------------------
 10       5  Documentation
  5       5  kbdin, etc, (dos like default handler)
- 2       1  mouse in fullscreen (default off)
  1       ?  joystick?
  1       8  network API
  0       ?  sound
