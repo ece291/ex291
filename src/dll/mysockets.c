@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mysockets.c,v 1.5 2001/04/24 04:04:38 pete Exp $
+   $Id: mysockets.c,v 1.6 2001/04/24 19:04:43 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -607,7 +607,6 @@ VOID __cdecl Socket_GetCallbackInfo(VOID)
 	case WAIT_OBJECT_0:
 	    if(Q_Empty(&socketSocketQueue)) {
 		setEAX(1);
-		break;
 	    } else {
 		unsigned int val = (unsigned int)Q_PopTail(&socketEventQueue);
 		unsigned int retval = 0;
@@ -625,9 +624,9 @@ VOID __cdecl Socket_GetCallbackInfo(VOID)
 		if(val & FD_CLOSE)
 		    retval |= 0x20;
 		setEDX(retval);
+		setEAX(0);
 	    }
 	    ReleaseMutex(socketMutex);
-	    setEAX(0);
 	    break;
 	case WAIT_TIMEOUT:
 	case WAIT_ABANDONED:
