@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mouse.c,v 1.6 2001/03/19 15:48:59 pete Exp $
+   $Id: mouse.c,v 1.7 2001/03/19 17:04:32 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -41,6 +41,8 @@ static INT MouseIRQpic;
 static BYTE MouseIRQline;
 
 static BOOL MouseReady = FALSE;
+
+BOOL MouseHidden = FALSE;
 
 BOOL InitMouse(VOID)
 {
@@ -85,7 +87,7 @@ VOID ShowMouse(VOID)
     if(*WindowedMode)
 	return;
 
-    while(ShowCursor(TRUE) <= 0) {}
+    MouseHidden = FALSE;
 }
 
 VOID HideMouse(VOID)
@@ -95,7 +97,7 @@ VOID HideMouse(VOID)
     if(*WindowedMode)
 	return;
 
-    while(ShowCursor(FALSE) >= -1) {}
+    MouseHidden = TRUE;
 }
 
 VOID GetMousePosition(USHORT *button, USHORT *column, USHORT *row)

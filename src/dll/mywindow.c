@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mywindow.c,v 1.8 2001/03/19 09:32:49 pete Exp $
+   $Id: mywindow.c,v 1.9 2001/03/19 17:04:32 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -30,6 +30,7 @@ static int windowWidth;
 static int windowHeight;
 
 extern PBYTE WindowedMode;
+extern BOOL MouseHidden;
 
 static BOOL WindowReady = FALSE;
 
@@ -191,6 +192,10 @@ LONG APIENTRY MyWndProc(HWND hWnd, UINT message, UINT wParam, LONG lParam)
 	    return 0;
 
 	// Mouse Handling
+	case WM_SETCURSOR:
+	    if(MouseHidden)
+		SetCursor(0);
+	    return 0;
 	case WM_MOUSEMOVE:
 	    DoMouseCallback(0x01, wParam, LOWORD(lParam), HIWORD(lParam));
 	    break;

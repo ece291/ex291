@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: dispatch.c,v 1.6 2001/03/19 16:26:51 pete Exp $
+   $Id: dispatch.c,v 1.7 2001/03/19 17:04:32 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -200,6 +200,8 @@ VOID Extra291Dispatch(VOID)
 	VBEAF_height = (int)LOWORD(getECX());
     }
 
+    HideMouse();
+
     if(!InitMyWindow(GetInstance(), VBEAF_width, VBEAF_height)) {
 	MessageBox(NULL, "Could not initialize output window.",
 	    "Extra BIOS Services for ECE 291", MB_OK | MB_ICONERROR);
@@ -235,6 +237,8 @@ VOID Extra291Dispatch(VOID)
     CloseMyWindow();
     CloseMouse();
     CloseKey();
+
+    ShowMouse();
 
     if(!usingVBEAF)
 	VdmUnmapFlat(displaySegment, displayOffset, displayBuffer, displayMode);
