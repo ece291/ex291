@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mysockets.c,v 1.6 2001/04/24 19:04:43 pete Exp $
+   $Id: mysockets.c,v 1.7 2001/12/12 18:28:06 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -634,3 +634,33 @@ VOID __cdecl Socket_GetCallbackInfo(VOID)
     }
 }
 
+VOID __cdecl Socket_getsockopt(UINT Socket, int level, int optname,
+    UINT optval_off, UINT optlen_off)
+{
+    char *optval = (char *)(programData + optval_off);
+    int *optlen = (int *)(programData + optlen_off);
+
+    int retval = getsockopt(Socket, level, optname, optval, optlen);
+
+    if(retval == 0) {
+	setEAX(0);
+    } else {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    }
+}
+
+VOID __cdecl Socket_setsockopt(UINT Socket, int level, int optname,
+    UINT optval_off, int optlen)
+{
+    char *optval = (char *)(programData + optval_off);
+
+    int retval = setsockopt(Socket, level, optname, optval, optlen);
+
+    if(retval == 0) {
+	setEAX(0);
+    } else {
+	setEAX(1);
+	*SocketSettings->LastError = WSAGetLastError();
+    }
+}

@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: dispatch.c,v 1.13 2001/04/11 19:12:49 pete Exp $
+   $Id: dispatch.c,v 1.14 2001/12/12 18:28:06 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -74,7 +74,9 @@ static pSocketFunc SocketFunctionMap[] = {
     (pSocketFunc)&Socket_InstallCallback,	// 0x5015
     (pSocketFunc)&Socket_RemoveCallback,	// 0x5016
     (pSocketFunc)&Socket_AddCallback,		// 0x5017
-    (pSocketFunc)&Socket_GetCallbackInfo	// 0x5018
+    (pSocketFunc)&Socket_GetCallbackInfo,	// 0x5018
+    (pSocketFunc)&Socket_getsockopt,		// 0x5019
+    (pSocketFunc)&Socket_setsockopt		// 0x5020
 };
 #define SOCKET_FUNCTIONS_NUM	(sizeof(SocketFunctionMap)/sizeof(pSocketFunc))
 

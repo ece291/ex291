@@ -16,7 +16,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: ex291srv.h,v 1.11 2001/04/11 20:49:56 pete Exp $
+   $Id: ex291srv.h,v 1.12 2001/12/12 18:28:06 pete Exp $
 */
 
 #ifndef __ex291srv_h
@@ -66,6 +66,8 @@ VOID __cdecl Socket_InstallCallback(VOID);
 VOID __cdecl Socket_RemoveCallback(VOID);
 VOID __cdecl Socket_AddCallback(UINT, UINT);
 VOID __cdecl Socket_GetCallbackInfo(VOID);
+VOID __cdecl Socket_getsockopt(UINT, int, int, UINT, UINT);
+VOID __cdecl Socket_setsockopt(UINT, int, int, UINT, int);
 
 BOOL	InitDirectDraw(VOID);
 VOID	CloseDirectDraw(VOID);
