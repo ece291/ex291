@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mywindow.c,v 1.3 2001/01/10 04:19:08 pete Exp $
+   $Id: mywindow.c,v 1.4 2001/01/10 04:50:01 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -205,6 +205,7 @@ LONG APIENTRY MyWndProc(HWND hWnd, UINT message, UINT wParam, LONG lParam)
 			DDraw_RefreshScreen();	// FIXME: only update needed
 			EndPaint(hWnd, &ps);
 		}
+		return 0;
 	}
 	return (DefWindowProc(hWnd, message, wParam, lParam));
 }
