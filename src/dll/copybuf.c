@@ -16,54 +16,53 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: copybuf.c,v 1.3 2001/03/19 08:45:28 pete Exp $
+   $Id: copybuf.c,v 1.4 2001/03/19 09:32:49 pete Exp $
 */
 
 #include "ex291srv.h"
 
 VOID Copy32To24 (PVOID src, PVOID dest, int width, int height)
 {
-  int si = 0;
-  int di = 0;
-  int i;
+    int si = 0;
+    int di = 0;
+    int i;
 
-  for (i = 0;i < width*height;i++)
-  {
-    *((PDWORD) (((PBYTE)dest)+di)) = *((PDWORD) (((PBYTE)src)+si));
-    si += 4;
-    di += 3;
-  }
+    for(i = 0; i < width*height; i++) {
+	*((PDWORD) (((PBYTE)dest)+di)) = *((PDWORD) (((PBYTE)src)+si));
+	si += 4;
+	di += 3;
+    }
 }
 
 VOID Copy32To24_pitched(PVOID src, PVOID dest, int pitch, int width, int height, int left, int top)
 {
-  int si = top*pitch;
-  int di = 0;
-  int i, j;
+    int si = top*pitch;
+    int di = 0;
+    int i, j;
 
-  for(j = 0; j < height; j++) {
-    for(i = 0; i < width; i++) {
-      *((PDWORD) (((PBYTE)dest)+di)) = *((PDWORD) (((PBYTE)src)+si));
-      si += 4;
-      di += 3;
+    for(j = 0; j < height; j++) {
+	for(i = 0; i < width; i++) {
+	    *((PDWORD) (((PBYTE)dest)+di)) = *((PDWORD) (((PBYTE)src)+si));
+	    si += 4;
+	    di += 3;
+	}
+	si += pitch-width*4;
     }
-    si += pitch-width*4;
-  }
 }
 
 VOID Copy24To32_pitched(PVOID src, PVOID dest, int pitch, int width, int height, int left, int top)
 {
-  int si = top*pitch;
-  int di = 0;
-  int i, j;
+    int si = top*pitch;
+    int di = 0;
+    int i, j;
 
-  for(j = 0; j < height; j++) {
-    for(i = 0; i < width; i++) {
-      *((PDWORD) (((PBYTE)dest)+di)) = *((PDWORD) (((PBYTE)src)+si));
-      si += 3;
-      di += 4;
+    for(j = 0; j < height; j++) {
+	for(i = 0; i < width; i++) {
+	    *((PDWORD) (((PBYTE)dest)+di)) = *((PDWORD) (((PBYTE)src)+si));
+	    si += 3;
+	    di += 4;
+	}
+	si += pitch-width*3;
     }
-    si += pitch-width*3;
-  }
 }
 

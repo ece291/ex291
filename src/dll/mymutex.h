@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mymutex.h,v 1.2 2000/12/18 06:28:00 pete Exp $
+   $Id: mymutex.h,v 1.3 2001/03/19 09:32:49 pete Exp $
 */
 
 // void mutex_unlock(PBYTE mutex);
@@ -23,17 +23,17 @@
 
 __inline void mutex_lock(PBYTE mutex)
 {
-	__asm {
-		mov	esi, mutex
-		xor	al, al
-		mov	ah, 2
-	again:
-		cmpxchg	[esi], ah
-		jz	done
-	}
-	Sleep(0);
-	goto again;
+    __asm {
+	mov	esi, mutex
+	xor	al, al
+	mov	ah, 2
+again:
+	cmpxchg	[esi], ah
+	jz	done
+    }
+    Sleep(0);
+    goto again;
 done:
-	;
+    ;
 }
 

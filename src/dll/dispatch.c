@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: dispatch.c,v 1.4 2001/03/19 08:45:28 pete Exp $
+   $Id: dispatch.c,v 1.5 2001/03/19 09:32:49 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -42,300 +42,289 @@ int VBEAF_width = 0;
 int VBEAF_height = 0;
 int VBEAF_depth = 0;
 
-VOID 	Extra291Dispatch(VOID)
+VOID Extra291Dispatch(VOID)
 {
-	WORD  regAX = HIWORD(getEAX());
+    WORD regAX = HIWORD(getEAX());
 
-	switch (regAX)
-	{
-		case VBEAF_GET_MEMORY:
+    switch (regAX) {
+	case VBEAF_GET_MEMORY:
 {
-	USHORT data_sel = getFS();
-	ULONG data_off = getESI();
-	DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
-		VDM_PM);
-	data->i[0] = DDraw_GetFreeMemory();
-	if(data->i[0] == 0xFFFFFFFF || data->i[0] == 0xFFFEFFFF) {
-		setCF(1);
-		data->i[0] = 0;
-	} else {
-		setCF(0);
-		data->i[0] >>= 10;	// Return in K
-	}
-	VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
-	break;
-}
-		case VBEAF_GET_MODELIST:
-{
-	USHORT data_sel = getFS();
-	ULONG data_off = getESI();
-	DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
-		VDM_PM);
-	if(!DDraw_GetModelist(data->seg[0], (WORD)data->off[0], data))
-		setCF(1);
-	else
-		setCF(0);
-	VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
-	break;
-}
-		case VBEAF_SET_MODE:
-{
-	USHORT data_sel = getFS();
-	ULONG data_off = getESI();
-	DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
-		VDM_PM);
+    USHORT data_sel = getFS();
+    ULONG data_off = getESI();
+    DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
+	VDM_PM);
+    data->i[0] = DDraw_GetFreeMemory();
+    if(data->i[0] == 0xFFFFFFFF || data->i[0] == 0xFFFEFFFF) {
+	setCF(1);
+	data->i[0] = 0;
+    } else {
 	setCF(0);
-
-	VBEAF_width = data->i[0];
-	VBEAF_height = data->i[1];
-	VBEAF_depth = data->i[2];
-	usingVBEAF = TRUE;
-	VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
-	break;
+	data->i[0] >>= 10;	// Return in K
+    }
+    VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
+    break;
 }
-		case VBEAF_SET_PALETTE:
+	case VBEAF_GET_MODELIST:
 {
+    USHORT data_sel = getFS();
+    ULONG data_off = getESI();
+    DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
+	VDM_PM);
+    if(!DDraw_GetModelist(data->seg[0], (WORD)data->off[0], data))
 	setCF(1);
-	break;
-}
-		case VBEAF_BITBLT_VIDEO:
-{
-	setCF(1);
-	break;
-}
-		case VBEAF_BITBLT_SYS:
-{
-	USHORT data_sel = getFS();
-	ULONG data_off = getESI();
-	DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
-		VDM_PM);
-	PVOID source = VdmMapFlat(data->seg[0], data->off[0], VDM_PM);
-
-	if(DDraw_BitBltSys(source, data))
-		setCF(1);
-
-	VdmUnmapFlat(data->seg[0], data->off[0], source, VDM_PM);
-	VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
-	break;
-}
-		case VBEAF_SET_CURSOR_SHAPE:
-{
-	setCF(1);
-	break;
-}
-		case VBEAF_SET_CURSOR_POS:
-{
-	setCF(1);
-	break;
-}
-		case VBEAF_SHOW_CURSOR:
-{
-	setCF(1);
-	break;
-}
-		case GET_MEMORY:
-{
+    else
 	setCF(0);
-	setAX((WORD)(DDraw_GetFreeMemory()>>16));	// Return in 64K
-	break;
+    VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
+    break;
 }
-		case SET_MODE:
+	case VBEAF_SET_MODE:
 {
-	inDispatchSegment = getCS();
-	inDispatchOffset = getEBX() & 0xFFFF;
+    USHORT data_sel = getFS();
+    ULONG data_off = getESI();
+    DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
+	VDM_PM);
+    setCF(0);
 
-	inDispatch = (PBYTE) VdmMapFlat(inDispatchSegment, inDispatchOffset,
-		VDM_V86);
-	VDD_int_wait = inDispatch + 1;
-	DOS_VDD_Mutex = inDispatch + 2;
-	WindowedMode = inDispatch + 3;
-	Mouse_IRQ = inDispatch + 4;
-	Keyboard_IRQ = inDispatch + 5;
-	Keyboard_Port = (PWORD)(inDispatch + 6);
-
-	//LogMessage("Windowed Flag = %d", (int)*WindowedMode);
-	//LogMessage("Mouse IRQ = %d", (int)*Mouse_IRQ);
-	//LogMessage("Keyboard IRQ = %d", (int)*Keyboard_IRQ);
-	//LogMessage("Keyboard Port = %d", (int)*Keyboard_Port);
-
-/*	LogMessage("Segment=0x%x, Offset=0x%x", (unsigned int)inDispatchSegment,
-		inDispatchOffset);*/
-
-	if(!InitKey()) {
-		MessageBox(NULL,
-			"Could not initialize keyboard driver.",
-			"Extra BIOS Services for ECE 291",
-			MB_OK | MB_ICONERROR);
-		setCF(1);
-		setAX(0xFFFF);
-		VdmUnmapFlat(inDispatchSegment, inDispatchOffset, inDispatch,
-			VDM_V86);
-		break;
-	}
-	if(!InitMouse()) {
-		MessageBox(NULL,
-			"Could not initialize mouse driver.",
-			"Extra BIOS Services for ECE 291",
-			MB_OK | MB_ICONERROR);
-		setCF(1);
-		setAX(0xFFFF);
-		CloseKey();
-		VdmUnmapFlat(inDispatchSegment, inDispatchOffset, inDispatch,
-			VDM_V86);
-		break;
-	}
-
-	if(!usingVBEAF) {
-		VBEAF_width = (int)HIWORD(getECX());
-		VBEAF_height = (int)LOWORD(getECX());
-	}
-
-	if(!InitMyWindow(GetInstance(), VBEAF_width, VBEAF_height)) {
-		MessageBox(NULL,
-			"Could not initialize output window.",
-			"Extra BIOS Services for ECE 291",
-			MB_OK | MB_ICONERROR);
-		setCF(1);
-		setAX(0xFFFF);
-		CloseMouse();
-		CloseKey();
-		VdmUnmapFlat(inDispatchSegment, inDispatchOffset, inDispatch,
-			VDM_V86);
-		break;
-	}
-
-	if(usingVBEAF) {
-		if(DDraw_SetMode(VBEAF_width, VBEAF_height, VBEAF_depth))
-			setCF(1);
-	} else {
-		displaySegment = getDX();
-		displayOffset = getEDI();
-		displayMode = VDM_PM;
-
-		displayBuffer = VdmMapFlat(displaySegment, displayOffset,
-			displayMode);
-
-		setCF(0);
-		setAX(DDraw_SetMode_Old((int)HIWORD(getECX()),
-			(int)LOWORD(getECX()), displayBuffer));
-	}
-
-	break;
+    VBEAF_width = data->i[0];
+    VBEAF_height = data->i[1];
+    VBEAF_depth = data->i[2];
+    usingVBEAF = TRUE;
+    VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
+    break;
 }
-		case UNSET_MODE:
+	case VBEAF_SET_PALETTE:
 {
-	setCF(0);
-	setAX(DDraw_UnSetMode());
-	CloseMyWindow();
+    setCF(1);
+    break;
+}
+	case VBEAF_BITBLT_VIDEO:
+{
+    setCF(1);
+    break;
+}
+	case VBEAF_BITBLT_SYS:
+{
+    USHORT data_sel = getFS();
+    ULONG data_off = getESI();
+    DISPATCH_DATA *data = (DISPATCH_DATA *) VdmMapFlat(data_sel, data_off,
+    	VDM_PM);
+    PVOID source = VdmMapFlat(data->seg[0], data->off[0], VDM_PM);
+
+    if(DDraw_BitBltSys(source, data))
+	setCF(1);
+
+    VdmUnmapFlat(data->seg[0], data->off[0], source, VDM_PM);
+    VdmUnmapFlat(data_sel, data_off, data, VDM_PM);
+    break;
+}
+	case VBEAF_SET_CURSOR_SHAPE:
+{
+    setCF(1);
+    break;
+}
+	case VBEAF_SET_CURSOR_POS:
+{
+    setCF(1);
+    break;
+}
+	case VBEAF_SHOW_CURSOR:
+{
+    setCF(1);
+    break;
+}
+	case GET_MEMORY:
+{
+    setCF(0);
+    setAX((WORD)(DDraw_GetFreeMemory()>>16));	// Return in 64K
+    break;
+}
+	case SET_MODE:
+{
+    inDispatchSegment = getCS();
+    inDispatchOffset = getEBX() & 0xFFFF;
+
+    inDispatch = (PBYTE) VdmMapFlat(inDispatchSegment, inDispatchOffset,
+	VDM_V86);
+    VDD_int_wait = inDispatch + 1;
+    DOS_VDD_Mutex = inDispatch + 2;
+    WindowedMode = inDispatch + 3;
+    Mouse_IRQ = inDispatch + 4;
+    Keyboard_IRQ = inDispatch + 5;
+    Keyboard_Port = (PWORD)(inDispatch + 6);
+
+    //LogMessage("Windowed Flag = %d", (int)*WindowedMode);
+    //LogMessage("Mouse IRQ = %d", (int)*Mouse_IRQ);
+    //LogMessage("Keyboard IRQ = %d", (int)*Keyboard_IRQ);
+    //LogMessage("Keyboard Port = %d", (int)*Keyboard_Port);
+
+/*  LogMessage("Segment=0x%x, Offset=0x%x", (unsigned int)inDispatchSegment,
+	inDispatchOffset);*/
+
+    if(!InitKey()) {
+	MessageBox(NULL, "Could not initialize keyboard driver.",
+	    "Extra BIOS Services for ECE 291", MB_OK | MB_ICONERROR);
+	setCF(1);
+	setAX(0xFFFF);
+	VdmUnmapFlat(inDispatchSegment, inDispatchOffset, inDispatch, VDM_V86);
+	break;
+    }
+    if(!InitMouse()) {
+	MessageBox(NULL, "Could not initialize mouse driver.",
+	    "Extra BIOS Services for ECE 291", MB_OK | MB_ICONERROR);
+	setCF(1);
+	setAX(0xFFFF);
+	CloseKey();
+	VdmUnmapFlat(inDispatchSegment, inDispatchOffset, inDispatch, VDM_V86);
+	break;
+    }
+
+    if(!usingVBEAF) {
+	VBEAF_width = (int)HIWORD(getECX());
+	VBEAF_height = (int)LOWORD(getECX());
+    }
+
+    if(!InitMyWindow(GetInstance(), VBEAF_width, VBEAF_height)) {
+	MessageBox(NULL, "Could not initialize output window.",
+	    "Extra BIOS Services for ECE 291", MB_OK | MB_ICONERROR);
+	setCF(1);
+	setAX(0xFFFF);
 	CloseMouse();
 	CloseKey();
-
-	if(!usingVBEAF)
-		VdmUnmapFlat(displaySegment, displayOffset, displayBuffer,
-			displayMode);
 	VdmUnmapFlat(inDispatchSegment, inDispatchOffset, inDispatch, VDM_V86);
-	usingVBEAF = FALSE;
-
 	break;
-}
-		case REFRESH_SCREEN:
-{
-	DDraw_RefreshScreen();
+    }
+
+    if(usingVBEAF) {
+	if(DDraw_SetMode(VBEAF_width, VBEAF_height, VBEAF_depth))
+	    setCF(1);
+    } else {
+	displaySegment = getDX();
+	displayOffset = getEDI();
+	displayMode = VDM_PM;
+
+	displayBuffer = VdmMapFlat(displaySegment, displayOffset, displayMode);
+
 	setCF(0);
+	setAX(DDraw_SetMode_Old((int)HIWORD(getECX()), (int)LOWORD(getECX()),
+	    displayBuffer));
+    }
 
-	break;
+    break;
 }
-		case GET_MOUSE_CALLBACK_INFO:
+	case UNSET_MODE:
 {
-	USHORT cond, bstate, col, row;
-	GetCallbackInfo(&cond, &bstate, &col, &row);
-	setAX(cond); setBX(bstate); setCX(col); setDX(row); setSI(0); setDI(0);
-	break;
-}
-		case MOUSE_RESET_DRIVER:
-{
-	break;
-}
-		case MOUSE_SHOW_CURSOR:
-{
-	ShowMouse();
-	break;
-}
-		case MOUSE_HIDE_CURSOR:
-{
-	HideMouse();
-	break;
-}
-		case MOUSE_GET_POSITION:
-{
-	USHORT button, column, row;
-	GetMousePosition(&button, &column, &row);
-	setBX(button); setCX(column); setDX(row);
-	break;
-}
-		case MOUSE_SET_POSITION:
-{
-	SetMousePosition(getCX(), getDX());
-	break;
-}
-		case MOUSE_GET_PRESS_DATA:
-{
-	setAX(0); setBX(0); setCX(0); setDX(0);
-	break;
-}
-		case MOUSE_GET_RELEASE_DATA:
-{
-	setAX(0); setBX(0); setCX(0); setDX(0);
-	break;
-}
-		case MOUSE_DEFINE_HORIZ_RANGE:
-{
-	SetHorizontalMouseRange(getCX(), getDX());
-	break;
-}
-		case MOUSE_DEFINE_VERT_RANGE:
-{
-	SetVerticalMouseRange(getCX(), getDX());
-	break;
-}
-		case MOUSE_DEFINE_GRAPHICS_CURSOR:
-{
-	break;
-}
-		case MOUSE_GET_MOTION_COUNTERS:
-{
-	setCX(0); setDX(0);
-	break;
-}
-		case MOUSE_SET_CALLBACK_PARMS:
-{
-	SetMouseCallbackMask(getCX());
-	break;
-}
-		case MOUSE_SET_LIGHTPEN_ON:
-{
-	break;
-}
-		case MOUSE_SET_LIGHTPEN_OFF:
-{
-	break;
-}
-		case MOUSE_SET_MICKEY_RATIO:
-{
-	break;
-}
-		case MOUSE_DEFINE_UPDATE_REGION:
-{
-	break;
-}
-		default:
-{
-	LogMessage("Unknown call 0x%x", (int)regAX);
-	setCF(1);
-	setAX(0x7100);
-	break;
-}
-	}
+    setCF(0);
+    setAX(DDraw_UnSetMode());
+    CloseMyWindow();
+    CloseMouse();
+    CloseKey();
 
-	return;
+    if(!usingVBEAF)
+	VdmUnmapFlat(displaySegment, displayOffset, displayBuffer, displayMode);
+    VdmUnmapFlat(inDispatchSegment, inDispatchOffset, inDispatch, VDM_V86);
+    usingVBEAF = FALSE;
+
+    break;
 }
+	case REFRESH_SCREEN:
+{
+    DDraw_RefreshScreen();
+    setCF(0);
+
+    break;
+}
+	case GET_MOUSE_CALLBACK_INFO:
+{
+    USHORT cond, bstate, col, row;
+    GetCallbackInfo(&cond, &bstate, &col, &row);
+    setAX(cond); setBX(bstate); setCX(col); setDX(row); setSI(0); setDI(0);
+    break;
+}
+	case MOUSE_RESET_DRIVER:
+{
+    break;
+}
+	case MOUSE_SHOW_CURSOR:
+{
+    ShowMouse();
+    break;
+}
+	case MOUSE_HIDE_CURSOR:
+{
+    HideMouse();
+    break;
+}
+	case MOUSE_GET_POSITION:
+{
+    USHORT button, column, row;
+    GetMousePosition(&button, &column, &row);
+    setBX(button); setCX(column); setDX(row);
+    break;
+}
+	case MOUSE_SET_POSITION:
+{
+    SetMousePosition(getCX(), getDX());
+    break;
+}
+	case MOUSE_GET_PRESS_DATA:
+{
+    setAX(0); setBX(0); setCX(0); setDX(0);
+    break;
+}
+	case MOUSE_GET_RELEASE_DATA:
+{
+    setAX(0); setBX(0); setCX(0); setDX(0);
+    break;
+}
+	case MOUSE_DEFINE_HORIZ_RANGE:
+{
+    SetHorizontalMouseRange(getCX(), getDX());
+    break;
+}
+	case MOUSE_DEFINE_VERT_RANGE:
+{
+    SetVerticalMouseRange(getCX(), getDX());
+    break;
+}
+	case MOUSE_DEFINE_GRAPHICS_CURSOR:
+{
+    break;
+}
+	case MOUSE_GET_MOTION_COUNTERS:
+{
+    setCX(0); setDX(0);
+    break;
+}
+	case MOUSE_SET_CALLBACK_PARMS:
+{
+    SetMouseCallbackMask(getCX());
+    break;
+}
+	case MOUSE_SET_LIGHTPEN_ON:
+{
+    break;
+}
+	case MOUSE_SET_LIGHTPEN_OFF:
+{
+    break;
+}
+	case MOUSE_SET_MICKEY_RATIO:
+{
+    break;
+}
+	case MOUSE_DEFINE_UPDATE_REGION:
+{
+    break;
+}
+	default:
+{
+    LogMessage("Unknown call 0x%x", (int)regAX);
+    setCF(1);
+    setAX(0x7100);
+    break;
+}
+    }
+
+    return;
+}
+

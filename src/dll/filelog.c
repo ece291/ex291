@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: filelog.c,v 1.2 2000/12/18 06:28:00 pete Exp $
+   $Id: filelog.c,v 1.3 2001/03/19 09:32:49 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -28,46 +28,46 @@ static HANDLE logMutex = 0;
 
 void vLogMessage(const char* format, va_list argptr) {
 //  if (!g_isDebug) return;
-	FILE *fLog;
+    FILE *fLog;
 
-	if(!logMutex)
-		logMutex = CreateMutex(NULL, TRUE, "LoggerMutex");
-	else
-		WaitForSingleObject(logMutex, INFINITE);
+    if(!logMutex)
+	logMutex = CreateMutex(NULL, TRUE, "LoggerMutex");
+    else
+	WaitForSingleObject(logMutex, INFINITE);
 
-	fLog = fopen("extra291.log", "at");
+    fLog = fopen("extra291.log", "at");
 
-	if (1) {
-		char buf[16];
-		fprintf(fLog, "%s - ", _m_strtime(buf));
-		vfprintf(fLog, format, argptr);
-		fprintf(fLog, "\n");
-		fclose(fLog);
-	}
+    if (1) {
+	char buf[16];
+	fprintf(fLog, "%s - ", _m_strtime(buf));
+	vfprintf(fLog, format, argptr);
+	fprintf(fLog, "\n");
+	fclose(fLog);
+    }
 
-	ReleaseMutex(logMutex);
+    ReleaseMutex(logMutex);
 }
 
 void LogMessage(const char* format, ...) {
-  va_list argptr;
-  va_start(argptr, format);
+    va_list argptr;
+    va_start(argptr, format);
 
-  vLogMessage(format, argptr);
+    vLogMessage(format, argptr);
 
-  va_end(argptr);
+    va_end(argptr);
 }
 
 char* _m_strtime(char* buf) {
-  DWORD millis = timeGetTime();
-  int mil, sec, min, hr;
+    DWORD millis = timeGetTime();
+    int mil, sec, min, hr;
 
-  mil = (millis % 1000);
-  sec = (millis / 1000) % 60;
-  min = (millis / (60 * 1000)) % 60;
-  hr  = (millis / (60 * 60 * 1000)) % 24;
+    mil = (millis % 1000);
+    sec = (millis / 1000) % 60;
+    min = (millis / (60 * 1000)) % 60;
+    hr  = (millis / (60 * 60 * 1000)) % 24;
 
-  sprintf(buf, "%02d:%02d:%02d.%03d", hr, min, sec, mil);
+    sprintf(buf, "%02d:%02d:%02d.%03d", hr, min, sec, mil);
 
-  return buf;
+    return buf;
 }
 

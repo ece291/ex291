@@ -16,67 +16,60 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: ex291srv.c,v 1.2 2000/12/18 06:28:00 pete Exp $
+   $Id: ex291srv.c,v 1.3 2001/03/19 09:32:49 pete Exp $
 */
 
 #include "ex291srv.h"
   
 static HINSTANCE hInst;
 
-BOOL
-WINAPI Extra291Initialize(
-	IN HINSTANCE DllHandle,
-	IN DWORD Reason,
-	IN LPVOID Context)
+BOOL WINAPI Extra291Initialize(IN HINSTANCE DllHandle, IN DWORD Reason,
+    IN LPVOID Context)
 {
-	BYTE i;
-	switch (Reason) {
-		case DLL_PROCESS_ATTACH:
-			START_DEBUGGING;
-			LFNVERSION();
-/*			for (i=0; i<MAX_HANDLES+2; i++)	
-				hFindFile[i] = INVALID_HANDLE_VALUE;
-			nHandlesUsed = 0;*/
-			SetFileApisToOEM();
-			DisableThreadLibraryCalls(DllHandle);
-			if(!InitDirectDraw()) {
-				MessageBox(NULL,
-					"Could not initialize DirectDraw.",
-					"Extra BIOS Services for ECE 291",
-					MB_OK | MB_ICONERROR);
-				return FALSE;
-			}
-			hInst = DllHandle;
+    BYTE i;
+    switch (Reason) {
+	case DLL_PROCESS_ATTACH:
+	    START_DEBUGGING;
+	    LFNVERSION();
+/*	    for (i=0; i<MAX_HANDLES+2; i++)	
+		hFindFile[i] = INVALID_HANDLE_VALUE;
+	    nHandlesUsed = 0;*/
+	    SetFileApisToOEM();
+	    DisableThreadLibraryCalls(DllHandle);
+	    if(!InitDirectDraw()) {
+		MessageBox(NULL, "Could not initialize DirectDraw.",
+		    "Extra BIOS Services for ECE 291", MB_OK | MB_ICONERROR);
+		return FALSE;
+	    }
+	    hInst = DllHandle;
 
-			break;
-		case DLL_PROCESS_DETACH :
-			SetFileApisToANSI();
-			CloseDirectDraw();
-			break;
-		default :
-			DBGMSG("Extra291Initialize: UNKNOWN CALL");
-			break;
-	}
-	return TRUE;
+	    break;
+	case DLL_PROCESS_DETACH :
+	    SetFileApisToANSI();
+	    CloseDirectDraw();
+	    break;
+	default :
+	    DBGMSG("Extra291Initialize: UNKNOWN CALL");
+	    break;
+    }
+    return TRUE;
 }
 
-VOID
-Extra291RegisterInit(VOID)
+VOID Extra291RegisterInit(VOID)
 {
-	setCF(0);
-	return;
+    setCF(0);
+    return;
 }
 
-VOID 
-Extra291TerminateVDM(VOID)
+VOID Extra291TerminateVDM(VOID)
 {
-	setCF(0);
-	return;
+    setCF(0);
+    return;
 }
 
 HINSTANCE GetInstance(VOID)
 {
-	return hInst;
+    return hInst;
 }
 
 #ifdef DBG
