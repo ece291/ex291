@@ -1,7 +1,6 @@
 Prty  Diff  Description
 --------------------------------
 10       5  Documentation
-10       3  EX291=w|S K7,300 M9   (env variable)
  9       3  window: repaints, autofocus
  5       5  kbdin, etc, (dos like default handler)
  2       1  mouse in fullscreen (default off)
