@@ -1,0 +1,138 @@
+EX291 (Extra Bios Services for ECE 291) Internal VDD API
+--------------------------------------------------------
+
+VBE/AF Driver I/O Data Structure:
+typedef struct DISPATCH_DATA
+{
+    unsigned int i[8]		__attribute__ ((packed));
+    unsigned int off[2]		__attribute__ ((packed));
+    unsigned short seg[2]	__attribute__ ((packed));
+    unsigned short s[4]		__attribute__ ((packed));
+} DISPATCH_DATA;
+
+All VBE/AF Driver functions pass the function in the high word of EAX and a
+pointer to the input/output data structure in FS:ESI.  On error, the carry
+flag is set.
+
+Function 6001h [VBE/AF Driver] - Get Free Video Memory
+  Description:
+    Gets available graphics memory.
+  Inputs:
+  Outputs:
+    i[0] = Total available memory in kilobytes
+  Notes:
+  Bugs:
+
+Function 6002h [VBE/AF Driver] - Get Mode List
+  Description:
+    Gets list of all available modes via a callback.
+  Inputs:
+    seg[0] = segment of callback function
+    off[0] = offset of callback function
+  Outputs:
+  Notes:
+    Calls callback function (which must return control to the VDD using
+    Unsimulate16) for each available graphics mode.  FS:ESI will point to
+    the input/output data structure passed to the VDD, with the following
+    fields set:
+      s[0] = bits per pixel
+      s[1] = width
+      s[2] = height
+      s[3] = bit depth emulated by VDD (1=yes, 0=no)
+      i[0] = red field size (for >8 BPP)
+      i[1] = red field position (for >8 BPP)
+      i[2] = green field size (for >8 BPP)
+      i[3] = green field position (for >8 BPP)
+      i[4] = blue field size (for >8 BPP)
+      i[5] = blue field position (for >8 BPP)
+      i[6] = reserved field size (for >8 BPP)
+      i[7] = reserved field position (for >8 BPP)
+  Bugs:
+
+Function 6003h [VBE/AF Driver] - Set Mode
+  Description:
+    Sets active video mode.
+  Inputs:
+    i[0] = width
+    i[1] = height
+    i[2] = bits per pixel
+    i[3] = emulated mode (1=emulated, 0=not emulated)
+  Outputs:
+  Notes:
+    If this function is called, the driver will ignore any non-VBE/AF-driver
+    mode sets.  This is for backwards compatibility with the old DOS interface.
+    Emulation is only supported for truecolor (24 or 32 bit) modes.
+  Bugs:
+
+Function 6004h [VBE/AF Driver] - Set Palette
+  Description:
+    Sets palette for 8-bit modes.
+  Inputs:
+    seg[0] = selector containing palette array
+    off[0] = 32-bit offset of palette array
+    i[0] = number of palette entries in array
+    i[1] = first system palette entry to change
+  Outputs:
+  Notes:
+    The palette data is an array of type AF_PALETTE (4 byte BGRA structure).
+    AF_PALETTE is defined in the FreeBE/AF header file vbeaf.h.
+    Each color component is 8 bits (not 6 as on standard VGA).
+  Bugs:
+
+Function 6005h [VBE/AF Driver] - BitBlt (from Video Memory)
+  Description:
+  Inputs:
+  Outputs:
+  Notes:
+  Bugs:
+
+Function 6006h [VBE/AF Driver] - BitBlt (from System Memory)
+  Description:
+    Copies an image (or a portion of one) from system memory onto the screen.
+  Inputs:
+    seg[0] = selector containing image data
+    off[0] = 32-bit offset to start of image data
+    i[0] = source pitch, total width of source image (in bytes)
+    i[1] = starting x coordinate of source area
+    i[2] = starting y coordinate of source area
+    i[3] = width of area to copy (in pixels)
+    i[4] = height of area to copy (in pixels)
+    i[5] = starting x coordinate of destination area
+    i[6] = starting y coordinate of destination area
+    i[7] = BitBlt operation type
+  Outputs:
+  Notes:
+  Bugs:
+    Only supports operation type of 0 (REPLACE).
+
+Function 6007h [VBE/AF Driver] - Set Cursor Shape
+  Description:
+    Sets the cursor shape.
+  Inputs:
+    seg[0] = selector containing cursor data
+    off[0] = 32-bit offset of cursor data
+  Outputs:
+  Notes:
+    The cursor data is of type AF_CURSOR.  AF_PALETTE is defined in the
+    FreeBE/AF header file vbeaf.h.
+  Bugs:
+
+Function 6008h [VBE/AF Driver] - Set Cursor Position
+  Description:
+    Sets the cursor position.
+  Inputs:
+    i[0] = new x position
+    i[1] = new y position
+  Outputs:
+  Notes:
+  Bugs:
+
+Function 6009h [VBE/AF Driver] - Show/Hide Cursor
+  Description:
+    Turns the cursor on or off.
+  Inputs:
+    i[0] = cursor visible flag (1=turn on, 0=turn off)
+  Outputs:
+  Notes:
+  Bugs:
+
