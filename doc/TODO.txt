@@ -1,7 +1,6 @@
 Prty  Diff  Description
 --------------------------------
 10       5  Documentation
- 9       3  window: autofocus
  5       5  kbdin, etc, (dos like default handler)
  2       1  mouse in fullscreen (default off)
  2       8  single/double buffer accelerated graphics primitives
