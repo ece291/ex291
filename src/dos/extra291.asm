@@ -28,12 +28,17 @@
 ; Any calls will be first handled here, and then redirected to the DLL. Some
 ; calls need special processing in both the DLL and here.
 ;
-; $Id: extra291.asm,v 1.12 2001/03/26 00:38:53 pete Exp $
+; $Id: extra291.asm,v 1.13 2001/03/26 09:15:22 pete Exp $
 %include "nasm_bop.inc"
 
 ;; dispatch what, where
 %macro dispatch 2
 	cmp	ax, %1
+	je	%2
+%endmacro
+
+%macro dispatchALTMPX 2
+	cmp	al, %1
 	je	%2
 %endmacro
 
@@ -65,14 +70,21 @@
 	mov	byte [%1], 0
 %endmacro
 
-SET_INTERRUPT_VECTOR		EQU	  25h
-GO_STAY_TSR			EQU	  31h
-GET_TRUE_VERSION_NUMBER		EQU	3306h
-GET_INTERRUPT_VECTOR		EQU	  35h
-FREE_ENVIRONM_MEMORY		EQU	  49h	
-TERMINATE_PROGRAM		EQU       4Ch
-GET_SYSVARS_TABLE		EQU       52h
-GET_CURRENT_PSP			EQU       62h
+%macro isp_header 1
+	jmp	short .start_handler
+.origint:
+	dd	0
+	dw	424Bh
+	db	%1		; EOI flag - 80h if handler acks PIC, else 0
+.hwreset:
+	jmp	short .hwreset_handler
+.hwreset_handler:
+	retf
+	times 6 db 0
+.start_handler:
+%endmacro
+
+ALTMPX_GET_DLLHANDLE		EQU	10h
 
 GET_MEMORY			EQU	7001h
 GET_MODES			EQU	7002h
@@ -93,10 +105,6 @@ DRIVER_VERSION			equ	0100h
 	jmp	Do_TSR_Load
 
 dllHandle	dw	0	; return value of Register Module, used by Dispatch 
-old10h_Routine		dd	0
-old33h_Routine		dd	0
-oldMouseIRQ_Routine	dd	0
-oldKeyboardIRQ_Routine	dd	0
 
 inDispatch	db	0	; These variables mapped by the VDD.  Don't move/reorder!
 VDD_int_wait	db	0
@@ -133,12 +141,94 @@ vesa_vendor_name	db	'ECE 291',0
 vesa_product_name	db	'Extra BIOS Services',0
 vesa_rev_string		db	'Revision 1.0',0
 
+; Alternate Multiplexer data
+ALTMPX_Signature	db	'ECE291  ', 'EX291   ', 0
+ALTMPX_Version		db	0100h
+ALTMPX_Number		db	0
+ALTMPX_ChainedInterrupts
+	db 2Dh
+	dw Interrupt2D_Handler
+	db 2Dh
+	dw Interrupt2D_Handler
+	db 2Dh
+	dw Interrupt2D_Handler
+	db 2Dh
+	dw Interrupt2D_Handler
+	db 2Dh
+	dw Interrupt2D_Handler
+	db 2Dh
+	dw Interrupt2D_Handler
+
+;----------------------------------------
+; Interrupt2D_Handler
+; Purpose: Hook for Alternate Multiplex interface
+;----------------------------------------
+Interrupt2D_Handler
+	isp_header	0
+
+	pushf
+	cmp	ah, [cs:ALTMPX_Number]
+	je	.ours
+	popf
+	jmp	word far [cs:.origint]
+.ours:
+	dispatchALTMPX	00h, .InstallCheck
+	dispatchALTMPX	02h, .Uninstall
+	dispatchALTMPX	04h, .GetChainedInts
+	dispatchALTMPX	ALTMPX_GET_DLLHANDLE, .GetDLLHandle
+
+	; others not implemented, return 0
+	mov	al, 0
+	popf
+	retf	2
+
+.InstallCheck:
+	mov	cx, [cs:ALTMPX_Version]
+	mov	dx, cs
+	mov	di, ALTMPX_Signature
+
+	mov	al, 0FFh			; mark as in use
+	popf
+	retf	2
+
+.Uninstall:
+	cmp	byte [cs:inGraphics], 0
+	jz	.notingraphics
+	push	ax
+	mov	ax, 4F23h
+	mov	bl, 03h				; Unset VBE Mode
+	int	10h
+	pop	ax
+.notingraphics:
+	mov	bx, cs
+
+	mov	al, 4				; Safe to remove, TSR disabled
+	popf
+	retf	2
+
+.GetChainedInts:
+	mov	dx, cs
+	mov	bx, ALTMPX_ChainedInterrupts
+
+	mov	al, 4				; List returned
+	popf
+	retf	2
+
+.GetDLLHandle:
+	mov	dx, [cs:dllHandle]
+
+	mov	al, 1				; Return valid
+	popf
+	retf	2
+
 ;----------------------------------------
 ; Interrupt10_Handler
 ; Purpose: Processes int 10h requests.  Passes request onto BIOS if not
 ;          handled internally.
 ;----------------------------------------
 Interrupt10_Handler
+	isp_header	0
+
 	pushf
 	test	ah, ah
 	jnz	.dodispatch
@@ -150,7 +240,7 @@ Interrupt10_Handler
 	dispatch	4F23h, .Supplemental291API
 .original:
 	popf
-	jmp	word far [cs:old10h_Routine]		; jump to BIOS interrupt handler
+	jmp	word far [cs:.origint]		; jump to BIOS interrupt handler
 
 .Supplemental291API:
 	dispatchAPI	00h, .GetSupplementalInfo
@@ -180,31 +270,6 @@ Interrupt10_Handler
 	mov	word [es:di+VESASupp.OEMProductRevPtr+2], cs
 	mov	word [es:di+VESASupp.OEMStringPtr], vesa_oem_name	; OEM Name offset
 	mov	word [es:di+VESASupp.OEMStringPtr+2], cs		; OEM Name segment
-
-	; Pass uninstall information in reserved area
-	mov	word [es:di+VESASupp.Reserved], 1
-	mov	ax, [cs:old10h_Routine]
-	mov	word [es:di+VESASupp.Reserved+2], ax
-	mov	ax, [cs:old10h_Routine+2]
-	mov	word [es:di+VESASupp.Reserved+4], ax
-	mov	ax, [cs:old33h_Routine]
-	mov	word [es:di+VESASupp.Reserved+6], ax
-	mov	ax, [cs:old33h_Routine+2]
-	mov	word [es:di+VESASupp.Reserved+8], ax
-	mov	ax, [cs:oldMouseIRQ_Routine]
-	mov	word [es:di+VESASupp.Reserved+10], ax
-	mov	ax, [cs:oldMouseIRQ_Routine+2]
-	mov	word [es:di+VESASupp.Reserved+12], ax
-	mov	ax, [cs:Mouse_INT]
-	mov	word [es:di+VESASupp.Reserved+14], ax
-	mov	ax, [cs:oldKeyboardIRQ_Routine]
-	mov	word [es:di+VESASupp.Reserved+16], ax
-	mov	ax, [cs:oldKeyboardIRQ_Routine+2]
-	mov	word [es:di+VESASupp.Reserved+18], ax
-	mov	ax, [cs:Keyboard_INT]
-	mov	word [es:di+VESASupp.Reserved+20], ax
-	mov	ax, [cs:dllHandle]
-	mov	word [es:di+VESASupp.Reserved+22], ax
 
 	; Indicate success to caller
 	mov	ax, 004Fh
@@ -289,7 +354,7 @@ Interrupt10_Handler
 	pop	ax
 
 	popf
-	jmp	word far [cs:old10h_Routine]		; jump to BIOS interrupt handler
+	jmp	word far [cs:.origint]		; jump to BIOS interrupt handler
 
 .RefreshScreen:
 	push	ds
@@ -327,12 +392,14 @@ Interrupt10_Handler
 ;          Jumps to old handler if not in graphics mode.
 ;----------------------------------------
 Interrupt33_Handler
+	isp_header	0
+
 	pushf
 	cmp	byte [cs:inGraphics], 0
 	jnz	.ourhandler
 
 	popf
-	jmp	word far [cs:old33h_Routine]		; jump to old handler
+	jmp	word far [cs:.origint]		; jump to old handler
 
 .ourhandler:
 	dispatch	MOUSE_SET_CALLBACK_PARMS, .definecallback
@@ -360,12 +427,14 @@ Interrupt33_Handler
 ;          Jumps to old handler if not in graphics mode.
 ;----------------------------------------
 MouseIRQ_Handler
+	isp_header	80h
+
 	pushf
 	cmp	byte [cs:inGraphics], 0
 	jnz	.ourhandler
 
 	popf
-	jmp	word far [cs:oldMouseIRQ_Routine]	; jump to old handler
+	jmp	word far [cs:.origint]	; jump to old handler
 
 .ourhandler:
 	
@@ -413,12 +482,14 @@ MouseIRQ_Handler
 ;          Jumps to old handler if not in graphics mode.
 ;----------------------------------------
 KeyboardIRQ_Handler
+	isp_header	80h
+
 	pushf
 	cmp	byte [cs:inGraphics], 0
 	jnz	.ackpic
 
 	popf
-	jmp	word far [cs:oldKeyboardIRQ_Routine]	; jump to old handler
+	jmp	word far [cs:.origint]	; jump to old handler
 
 .ackpic:
 	push	ax
@@ -449,7 +520,7 @@ errorNoDLL	db	'DLL not found, terminating ...',13,10,'$'
 errorNoDispatch	db	'Dispatch routine not found, terminating ...',13,10,'$'
 errorNoInit	db	'Initialization routine not found, terminating ...',13,10,'$'
 errorNoMem	db	'Out of memory, terminating ...',13,10,'$'
-errorNoUninst	db	'Sanity check: didnt get uninstall info even though driver is installed ...',13,10,'$'
+errorNoUninst	db	'Cannot uninstall.',13,10,'$'
 errorBadEnv	db	'Missing or invalid EX291 environment variable, terminating ...',13,10,'$'
 errorBadPath	db	'Program directory not found, terminating ...',13,10,'$'
 
@@ -542,66 +613,148 @@ PrintStr
 	ret
 
 ;----------------------------------------
-; InstallInt
-; Purpose: Installs an interrupt handler.
+; ChainInt
+; Purpose: Installs an interrupt handler in the calling chain.
 ; Inputs: al=interrupt number
-;         dx=offset of handler function
+;         cx=placement in chained interrupts table
+;         di=offset of handler function
 ; Outputs: None
 ;----------------------------------------
-InstallInt
+ChainInt
 	push	ax
-	push	ds
+	push	bx
+	push	dx
+	push	es
 
-	mov 	ah, SET_INTERRUPT_VECTOR
+	mov 	ah, 35h		; [DOS] Get Interrupt Vector
+	int 	21h
+	mov 	[di+2], bx	; store old vector in ISR header
+	mov 	[di+4], es
+
+	mov 	ah, 25h		; [DOS] Set Interrupt Vector
+	mov	dx, di
+	push	ds
 	push	cs
 	pop	ds
 	int 	21h
-
 	pop	ds
-	pop	ax
-	ret
 
-;----------------------------------------
-; GetInt
-; Purpose: Gets address of current interupt handler routine.
-; Inputs: al=interrupt number
-;         di=offset of offset/segment pair to put original routine address in.
-; Outputs: None
-;----------------------------------------
-GetInt
-	push	ax
-	push	bx
-	push	es
-
-	mov 	ah, GET_INTERRUPT_VECTOR
-	int 	21h
-	mov 	[di], bx
-	mov 	[di+2], es
+	; Save new vector in chained interrupts table
+	mov	bx, cx
+	shl	bx, 1		; cx*3 = offset into table
+	add	bx, cx
+	mov	[ALTMPX_ChainedInterrupts+bx], al
+	mov	[ALTMPX_ChainedInterrupts+bx+1], di
 
 	pop	es
+	pop	dx
 	pop	bx
 	pop	ax
 	ret
 
 ;----------------------------------------
-; RemoveInt
-; Purpose: Uninstalls an interrupt handler.
-; Inputs: al=interrupt number
-;         bx=offset of offset/segment pair.
-; Outputs: None
+; UnchainInt
+; Purpose: Uninstalls an interrupt handler from the calling chain.
+; Inputs: bx=offset of chained interrupt table
+;         cx=placement in chained interrupts table
+;         dx=segment of chained interrupt table
+; Outputs: CF set if interrupt 2Dh (end of table), otherwise CF clear
 ;----------------------------------------
-RemoveInt
+UnchainInt
 	push	ax
+	push	bx
 	push	dx
 	push	ds
 
-	mov 	ah, SET_INTERRUPT_VECTOR
-	lds	dx, [bx]
+	; Address into table
+	mov	ds, dx
+	mov	ax, cx		; cx*3 = offset into table
+	shl	ax, 1
+	add	ax, cx
+	add	bx, ax
+	mov	al, [bx]	; Get interrupt number from table
+	mov	bx, [bx+1]	; Go to function offset
+	lds	dx, [bx+2]	; Load old vector from ISR header
+	mov 	ah, 25h		; [DOS] Set Interrupt Vector
 	int 	21h
 
+	cmp	al, 2Dh
+	je	.last
+	clc
+	jmp	short .done
+
+.last:
+	stc
+
+.done:
 	pop	ds
 	pop	dx
+	pop	bx
 	pop	ax
+	ret
+
+;----------------------------------------
+; Check_If_Installed
+; Inputs: DX:AX -> TSR signature string
+; Outputs: CF clear if not installed
+;	    AL = 00h if free multiplex number exists
+;	     AH = multiplex number to use
+;	    AL = 01h if all multiplex numbers are already in use
+;            AH destroyed
+;	    CX destroyed
+;	   CF set if already installed
+;	    AL = FFh
+;	    AH = multiplex number being used
+;	    CX = version number of resident TSR
+; Public Domain 1992,1995 Ralf Brown (AMIS 0.92)
+;----------------------------------------
+Check_If_Installed
+	push	ds
+	push	si
+	mov	ds, dx
+	mov	si, ax
+	push	es
+	push	di
+	push	dx
+	push	bx
+	xor	ax, ax			; AH=mpx #00h, AL=func 00h (instlchk)
+	mov	bx, 0001h		; BH=00h, BL=01h: all mpx numbers in use
+.loop:
+	push	ax
+	int	2Dh			; check if INT 2D/AH=xx is in use
+	cmp	al, 0FFh		; multiplex number in use?
+	pop	ax
+	je	.inuse
+	or	bl, bl			; if BL=00h, we've already seen a free mpx
+	je	.next
+	mov	bl,0
+	mov	bh, ah
+	jmp	short .next
+.inuse:
+	mov	es, dx
+	push	cx			; remember version number
+	mov	cx, 16/2		; length of signature string
+	cld
+	push	si			; remember start of desired signature
+	rep	cmpsw			; did we get our signature?
+	pop	si			; get back start of desired signature
+	pop	cx			; retrieve version
+	stc				; assume already installed
+	jz	.done			;   and quit if it is
+.next:
+	inc	ah
+	jnz	.loop
+	; not yet installed
+	clc
+	mov	ah, bh			; AH <- multiplex number to use
+	mov	al, bl			; AL <- 'available' flag
+.done:
+	pop	bx
+	pop	dx
+	pop	di
+	pop	es
+	pop	si
+	pop	ds
 	ret
 
 ;----------------------------------------
@@ -987,7 +1140,7 @@ Do_TSR_Load
 	call	PrintStr
 
 	; check presence of Windows NT/2000
-	mov   	ax, GET_TRUE_VERSION_NUMBER
+	mov   	ax, 3306h		; [DOS] Get True Version Number
 	int   	21h
 	cmp	bx, 3205h
 	je	.check_presence
@@ -997,60 +1150,67 @@ Do_TSR_Load
         jmp 	.Terminate	
 
 .check_presence:
-	; check if srv already running
-	mov	ax, 4F23h
-	xor	bl, bl
-	push	cs
-	pop	es
-	mov	di, vesa_info_area
-	mov	word [es:di+VESASupp.Reserved], 0
-	int	10h
-	cmp	ax, 004Fh		; Is there an API for that index?
-	jne	.install
-	cmp	word [es:di+VESASupp.Signature+4], '29'	; Is our driver present?
-	jne	.install
-	cmp	byte [es:di+VESASupp.Signature+6], '1'
-	jne	.install
-	cmp	word [vesa_info_area+VESASupp.Reserved], 1	; Did we get the uninstall info?
-	je	.restore_int
+	mov	dx, ds
+	mov	ax, ALTMPX_Signature
+	call	Check_If_Installed
+	jnc	.install
 
-	mov	dx, errorNoUninst
-	call	PrintStr
-	jmp	.Terminate
-
-.restore_int:
 	cmp	byte [onlyInstall], 0
-	jz	.do_restore_int
+	jz	.do_uninstall
 
 	mov	dx, AlreadyInstalled
 	call	PrintStr
 	jmp	.Terminate
 
-.do_restore_int:
-	; restore interrupts
-	mov 	al, 10h            	; video Handler
-	mov	bx, vesa_info_area+VESASupp.Reserved+2
-	call	RemoveInt
+.do_uninstall:
+	mov	al, 02h			; [AMIS] Uninstall
+	mov	dx, cs			; Return address on success
+	mov	bx, .done_uninstall
+	int	2Dh
 
-	mov 	al, 33h            	; mouse Handler
-	mov	bx, vesa_info_area+VESASupp.Reserved+6
-	call	RemoveInt
+	cmp	al, 04h			; Safe to remove, TSR disabled
+	jne	.cant_uninstall
 
-	mov 	al, [vesa_info_area+VESASupp.Reserved+14]	; mouse IRQ Handler
-	mov	bx, vesa_info_area+VESASupp.Reserved+10
-	call	RemoveInt
-
-	mov 	al, [vesa_info_area+VESASupp.Reserved+20]	; keyboard IRQ Handler
-	mov	bx, vesa_info_area+VESASupp.Reserved+16
-	call	RemoveInt
+	push	bx			; Save installed program segment
 
 	; release VDD
-	mov	ax, [vesa_info_area+VESASupp.Reserved+22]
+	mov	al, ALTMPX_GET_DLLHANDLE
+	int	2Dh
+	mov	ax, dx
 	VDD_UnRegister
 
+	; restore interrupts
+	mov	al, 04h			; [AMIS] Determine Chained Interrupts
+	mov	bl, 0
+	int	2Dh
+
+	cmp	al, 04h			; List returned
+	jne	.cant_uninstall
+
+	xor	cx, cx
+.loop_restore_int:
+	call	UnchainInt
+	jc	.done_restore_int
+	inc	cx
+	jmp	short .loop_restore_int
+
+.done_restore_int:
+	pop	bx			; Restore installed program segment
+	push	es
+	mov	es, bx
+	mov	ah, 49h			; [DOS] Free Memory
+	int	21h
+	pop	es
+
+.done_uninstall:
 	mov	dx, Uninstalled
 	call	PrintStr
 	jmp 	.Terminate
+
+.cant_uninstall:
+	mov	dx, errorNoUninst
+	call	PrintStr
+	jmp	.Terminate
 
 .install:
 	cmp	byte [onlyUninstall], 0
@@ -1061,6 +1221,8 @@ Do_TSR_Load
 	jmp	.Terminate
 
 .do_install:
+	mov	[ALTMPX_Number], ah
+
 	; parse EX291 environment variable
 	call	Load_Env_Settings
 	test	ax, ax
@@ -1150,7 +1312,7 @@ Do_TSR_Load
 	call	PrintStr
 
 .Terminate:
-        mov 	ah, TERMINATE_PROGRAM
+        mov 	ah, 4Ch			; [DOS] Terminate Program
         xor 	al, al               	; Return Code
 	int 	21h
 
@@ -1170,6 +1332,8 @@ Do_TSR_Load
 ;	jmp 	short .Terminate
 
 .installIRQ:
+	xor	cx, cx
+
 	; Check for disabled functionality
 	cmp	byte [noGraphics], 0
 	jz	.installGraphics
@@ -1181,42 +1345,44 @@ Do_TSR_Load
 .installGraphics
 	; Install 10h handler
 	mov 	al, 10h
-	mov 	di, old10h_Routine
-	call	GetInt
-	mov 	dx, Interrupt10_Handler
-	call	InstallInt
+	mov 	di, Interrupt10_Handler
+	call	ChainInt
+	inc	cx
 
 	; Install 33h handler
 	mov 	al, 33h
-	mov	di, old33h_Routine
-	call	GetInt
-	mov 	dx, Interrupt33_Handler
-	call	InstallInt
+	mov 	di, Interrupt33_Handler
+	call	ChainInt
+	inc	cx
 
 	; Install mouse IRQ handler
 	mov 	al, [Mouse_INT]
-	mov 	di, oldMouseIRQ_Routine
-	call	GetInt
-	mov 	dx, MouseIRQ_Handler
-	call	InstallInt
+	mov 	di, MouseIRQ_Handler
+	call	ChainInt
+	inc	cx
 
 	; Install keyboard IRQ handler
 	mov 	al, [Keyboard_INT]
-	mov 	di, oldKeyboardIRQ_Routine
-	call	GetInt
-	mov 	dx, KeyboardIRQ_Handler
-	call	InstallInt
+	mov 	di, KeyboardIRQ_Handler
+	call	ChainInt
+	inc	cx
 
 .done:
+	; Install 2Dh handler
+	mov	al, 2Dh
+	mov	di, Interrupt2D_Handler
+	call	ChainInt
+	inc	cx
+
 	mov	dx, Installed
 	call	PrintStr
 
         ; Terminate and stay resident now
 
 	mov	es, [cs:2Ch]
-	mov	ah, FREE_ENVIRONM_MEMORY
+	mov	ah, 49h			; [DOS] Free Environment Memory
 	int   	21h
-	mov 	ah, GO_STAY_TSR		; TSR
+	mov 	ah, 31h			; [DOS] TSR
 	xor 	al, al               	; Return Code
 	mov 	dx, resident_end+15
 	mov	cl, 4
