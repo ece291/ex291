@@ -1,7 +1,7 @@
 ; Protected Mode EX291 Test
-;  By Peter Johnson, 2000
+;  By Peter Johnson, 2000-2001
 ;
-; $Id: test.asm,v 1.4 2000/12/18 07:29:33 pete Exp $
+; $Id: test.asm,v 1.5 2001/03/19 08:46:02 pete Exp $
 %include "lib291.inc"
 
 	BITS 32
@@ -9,6 +9,10 @@
 	GLOBAL	_main
 
 SECTION .bss
+
+_kbINT		resb	1
+_kbIRQ		resb	1
+_kbPort		resw	1
 
 CurrentKey	resb	1
 NewKey		resb	1
@@ -22,14 +26,24 @@ mousey		resw	1
 prevmousex	resw	1
 prevmousey	resw	1
 
+_VideoBlock	resd	1
+
 SECTION .text
 
 _main
 	call	_LibInit
 
-	invoke	_SetGraphics, word 640, word 480
+	invoke	_AllocMem, dword 640*480*4
+	mov	[_VideoBlock], eax
 
-	invoke	_Install_Int, dword 15, dword KeyboardISR ;9
+	invoke	_InitGraphics, dword _kbINT, dword _kbIRQ, dword _kbPort
+
+	invoke	_FindGraphicsMode, word 640, word 480, word 32, dword 1
+	push	eax
+	movzx	eax, byte [_kbINT]
+	invoke	_Install_Int, eax, dword KeyboardISR
+	pop	eax
+	invoke	_SetGraphicsMode, ax
 
 ;	xor	eax, eax
 ;	int	33h
@@ -49,11 +63,11 @@ _main
 
 	mov	ecx, 640*480
 	xor	eax, eax
-	mov	es, [_VideoBlock]
-	xor	edi, edi
+	mov	edi, [_VideoBlock]
+	cld
 	rep stosd
 
-	call	_RefreshVideoBuffer
+	invoke	_CopyToScreen, dword [_VideoBlock], dword 640*4, dword 0, dword 0, dword 640, dword 480, dword 0, dword 0
 
 .test1:
 	cmp	byte [NewKey], 0
@@ -72,11 +86,10 @@ _main
 	pop	eax
 	inc	eax
 	push	eax
-	mov	es, [_VideoBlock]
-	xor	edi, edi
+	mov	edi, [_VideoBlock]
 	rep stosd
 
-	call	_RefreshVideoBuffer
+	invoke	_CopyToScreen, dword [_VideoBlock], dword 640*4, dword 0, dword 0, dword 640, dword 480, dword 0, dword 0
 
 	cmp	byte [NewKey], 0
 	jz	.test2
@@ -94,8 +107,8 @@ _main
 
 	mov	[prevstatus], cx
 
-	invoke	_WritePixel, word [mousex], word [mousey], dword 0FFFFFFh
-	call	_RefreshVideoBuffer
+;	invoke	_WritePixel, word [mousex], word [mousey], dword 0FFFFFFh
+	invoke	_CopyToScreen, dword [_VideoBlock], dword 640*4, dword 0, dword 0, dword 640, dword 480, dword 0, dword 0
 .nope:
 	cmp	byte [NewKey], 0
 	jz	.test3
@@ -119,8 +132,8 @@ _main
 	mov	cx, [mousex]
 	mov	[prevmousex], cx
 
-	invoke	_WritePixel, word [mousex], word [mousey], dword 0FFFFFFh
-	call	_RefreshVideoBuffer
+;	invoke	_WritePixel, word [mousex], word [mousey], dword 0FFFFFFh
+	invoke	_CopyToScreen, dword [_VideoBlock], dword 640*4, dword 0, dword 0, dword 640, dword 480, dword 0, dword 0
 .nope2:
 	cmp	byte [NewKey], 0
 	jz	.test4
@@ -135,17 +148,20 @@ _main
 
 ;	invoke	_Free_RMCB, word [mouse_seg], word [mouse_off]
 
-	call	_UnsetGraphics
+	call	_UnsetGraphicsMode
 
-	invoke	_Remove_Int, dword 15;9
+	call	_ExitGraphics
+
+	movzx	eax, byte [_kbINT]
+	invoke	_Remove_Int, eax
 
 	call	_LibExit
 	ret
 
 KeyboardISR
 
-	mov	dx, 300h
-        in      al, dx;60h         ; Get value from keyboard
+	mov	dx, [_kbPort]
+        in      al, dx          ; Get value from keyboard
 
         mov     [CurrentKey], al
 	test	al, 80h
@@ -153,6 +169,10 @@ KeyboardISR
 	mov	byte [NewKey], 1
 .done:
         mov     al, 20h
+	cmp	byte [_kbIRQ], 8
+	jb	.lowirq
+	out	0A0h, al
+.lowirq:
         out     20h, al
 
         xor     eax, eax        ; Don't chain!
