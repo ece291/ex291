@@ -20,7 +20,7 @@
 ;
 ; You should have received a copy of the GNU General Public License
 ; along with this program; if not, write to the Free Software Foundation,
-; Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+; Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 ;
 ; This is the 16 bit DOS TSR portion of the Extra BIOS services for ECE 291
 ; for Windows 2000. It will register the DLL, hook various interrupts,
@@ -28,7 +28,7 @@
 ; Any calls will be first handled here, and then redirected to the DLL. Some
 ; calls need special processing in both the DLL and here.
 ;
-; $Id: extra291.asm,v 1.6 2001/03/20 04:47:40 pete Exp $
+; $Id: extra291.asm,v 1.7 2001/03/22 21:02:56 pete Exp $
 %include "nasm_bop.inc"
 
 %macro printstr 1
