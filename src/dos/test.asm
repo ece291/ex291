@@ -1,7 +1,7 @@
 ; Protected Mode EX291 Test
 ;  By Peter Johnson, 2000
 ;
-; $Id: test.asm,v 1.2 2000/12/18 06:28:00 pete Exp $
+; $Id: test.asm,v 1.3 2000/12/18 06:34:31 pete Exp $
 %include "lib291.inc"
 
 	BITS 32
@@ -161,10 +161,10 @@ KeyboardISR
 KeyboardISR_end
 
 proc MouseCallback
-%$DPMIRegsPtr	arg	4
+.DPMIRegsPtr	arg	4
 
 	push	esi
-	mov	esi, [ebp+%$DPMIRegsPtr]
+	mov	esi, [ebp+.DPMIRegsPtr]
 
 	mov	eax, [esi+DPMI_EBX_off]
 	mov	[buttonstatus], ax
