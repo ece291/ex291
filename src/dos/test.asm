@@ -1,7 +1,7 @@
 ; Protected Mode EX291 Test
 ;  By Peter Johnson, 2000
 ;
-; $Id: test.asm,v 1.3 2000/12/18 06:34:31 pete Exp $
+; $Id: test.asm,v 1.4 2000/12/18 07:29:33 pete Exp $
 %include "lib291.inc"
 
 	BITS 32
@@ -174,7 +174,7 @@ proc MouseCallback
 	mov	[mousey], ax
 
 	pop	esi
-
+	ret
 endproc
 MouseCallback_end
 
