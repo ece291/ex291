@@ -16,7 +16,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: ex291srv.h,v 1.4 2001/03/20 03:33:43 pete Exp $
+   $Id: ex291srv.h,v 1.5 2001/03/29 22:55:27 pete Exp $
 */
 
 #ifndef __ex291srv_h
@@ -49,8 +49,6 @@
 #define LARGE_BUF_SIZE				128
 #define	MAX_PATHNAME_SIZE			255
 #define	MAX_FILENAME_SIZE			260
-
-#include "debug.h"
 
 #include "mymutex.h"
 

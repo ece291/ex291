@@ -16,7 +16,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: ex291srv.c,v 1.4 2001/03/29 22:46:31 pete Exp $
+   $Id: ex291srv.c,v 1.5 2001/03/29 22:55:27 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -29,8 +29,6 @@ BOOL WINAPI Extra291Initialize(IN HINSTANCE DllHandle, IN DWORD Reason,
     BYTE i;
     switch (Reason) {
 	case DLL_PROCESS_ATTACH:
-	    START_DEBUGGING;
-	    LFNVERSION();
 /*	    for (i=0; i<MAX_HANDLES+2; i++)	
 		hFindFile[i] = INVALID_HANDLE_VALUE;
 	    nHandlesUsed = 0;*/
@@ -53,7 +51,7 @@ BOOL WINAPI Extra291Initialize(IN HINSTANCE DllHandle, IN DWORD Reason,
 	    CloseDirectDraw();
 	    break;
 	default :
-	    DBGMSG("Extra291Initialize: UNKNOWN CALL");
+	    LogMessage("Extra291Initialize: UNKNOWN CALL");
 	    break;
     }
     return TRUE;
@@ -76,9 +74,3 @@ HINSTANCE GetInstance(VOID)
     return hInst;
 }
 
-#ifdef DBG
-char _DebugString[LARGE_BUF_SIZE]; 
-char _DebugPos[LARGE_BUF_SIZE]; 
-char _LastFunction[LARGE_BUF_SIZE];
-BYTE _DebugStackLevel = 0;
-#endif
