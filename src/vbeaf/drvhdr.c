@@ -1,14 +1,14 @@
 /* drvhdr.c -- VBE/AF driver header, used as input for DRVGEN.
    Based on FreeBE/AF stub drvhdr.c.
 
-   $Id: drvhdr.c,v 1.1 2001/01/08 07:39:07 pete Exp $
+   $Id: drvhdr.c,v 1.2 2001/03/01 17:09:00 pete Exp $
 */
 
 #include "vbeaf.h"
 
 AF_DRIVER drvhdr =
 {
-   "EX291.DRV",                                             /* Signature */
+   "VBEAF.DRV",                                             /* Signature */
    0x200,                                                   /* Version */
    0x100,                                                   /* DriverRev */
    "FreeBE/AF EX291 driver " FREEBE_VERSION,                /* OemVendorName */
