@@ -111,7 +111,7 @@ Function 6007h [VBE/AF Driver] - Set Cursor Shape
     off[0] = 32-bit offset of cursor data
   Outputs:
   Notes:
-    The cursor data is of type AF_CURSOR.  AF_PALETTE is defined in the
+    The cursor data is of type AF_CURSOR.  AF_CURSOR is defined in the
     FreeBE/AF header file vbeaf.h.
   Bugs:
 
