@@ -3,6 +3,10 @@
 # file to this component.  This file merely indirects to the real make file
 # that is shared by all the driver components of the Windows NT DDK
 #
-# $Id: Makefile,v 1.2 2000/12/18 06:28:00 pete Exp $
+# $Id: Makefile,v 1.3 2001/03/30 03:39:57 pete Exp $
 
 !INCLUDE $(NTMAKEENV)\makefile.def
+
+{}.asm{$O\}.obj:
+	nasm -f win32 -o $*.obj $<
+
