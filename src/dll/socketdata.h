@@ -15,25 +15,21 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: socketdata.h,v 1.1 2001/04/03 04:17:36 pete Exp $
+   $Id: socketdata.h,v 1.2 2001/04/07 08:03:27 pete Exp $
 */
 
 #pragma pack(push, 1)
 
 typedef struct PMODELIB_SOCKADDR
 {
-    unsigned short Family;
     unsigned short Port;
     unsigned int Address;
-    unsigned char Zero[8];
 } PMODELIB_SOCKADDR;
 
 typedef struct PMODELIB_HOSTENT
 {
     char *Name;
     char **Aliases;
-    unsigned int AddrType;
-    unsigned int Length;
     unsigned int **AddrList;
 } PMODELIB_HOSTENT;
 
