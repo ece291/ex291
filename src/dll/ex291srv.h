@@ -16,39 +16,18 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: ex291srv.h,v 1.5 2001/03/29 22:55:27 pete Exp $
+   $Id: ex291srv.h,v 1.6 2001/03/29 23:04:58 pete Exp $
 */
 
 #ifndef __ex291srv_h
 #define __ex291srv_h
 
-#define TESTING 	1
-#ifdef WIN_32
-#define WIN
-#define FLAT_32
-#define TRUE_IF_WIN32	1
-#else
-#define TRUE_IF_WIN32	0
-#endif
-
-#ifdef WIN
 #define _WINDOWS
 #include <windows.h>
-#endif
 
 #include <stdarg.h>
 
-#ifdef UNICODE
-#error cannot handle UNICODE 
-#endif
-
 #include <vddsvc.h>		//mem buf translation
-
-#define	MSG_BUF_SIZE				256
-#define SMALL_BUF_SIZE				32
-#define LARGE_BUF_SIZE				128
-#define	MAX_PATHNAME_SIZE			255
-#define	MAX_FILENAME_SIZE			260
 
 #include "mymutex.h"
 
@@ -87,11 +66,6 @@
 #define MOUSE_SET_LIGHTPEN_OFF			0x701E
 #define MOUSE_SET_MICKEY_RATIO			0x701F
 #define MOUSE_DEFINE_UPDATE_REGION		0x7020
-
-#define	MAKEADDRESS(seg, ofs)	((ULONG)(((seg) << 16) | (ofs)))
-
-#define	SFT_SIZE        0x21
-#define	JFT_SIZE	20
 
 HINSTANCE GetInstance(VOID);
 
