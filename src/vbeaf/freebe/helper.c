@@ -38,10 +38,8 @@ void trace_putc(char c)
    : "a" (0x200),
      "d" (c)
 
-   : "%eax", 
-     "%ebx", 
+   : "%ebx", 
      "%ecx", 
-     "%edx", 
      "%esi", 
      "%edi"
    );
@@ -151,12 +149,8 @@ void rm_int(int num, RM_REGS *regs)
      "c" (0),
      "D" (regs)
 
-   : "%eax", 
-     "%ebx", 
-     "%ecx", 
-     "%edx", 
-     "%esi", 
-     "%edi"
+   : "%edx", 
+     "%esi"
    );
 }
 
@@ -189,10 +183,7 @@ int allocate_dos_memory(int size, int *sel)
    : "a" (0x100),
      "b" ((size+15)/16)
 
-   : "%eax", 
-     "%ebx", 
-     "%ecx", 
-     "%edx", 
+   : "%ecx", 
      "%esi", 
      "%edi"
    );
@@ -219,10 +210,8 @@ void free_dos_memory(int sel)
    : "a" (0x101),
      "d" (sel)
 
-   : "%eax", 
-     "%ebx", 
+   : "%ebx", 
      "%ecx", 
-     "%edx", 
      "%esi", 
      "%edi"
    );
@@ -273,12 +262,8 @@ int allocate_selector(int addr, int size)
      "m" ((size-1)>>16),
      "m" ((size-1)&0xFFFF)
 
-   : "%eax", 
-     "%ebx", 
-     "%ecx", 
-     "%edx", 
-     "%esi", 
-     "%edi"
+   : "%edx", 
+     "%esi"
    );
 
    if (!ok)
@@ -302,9 +287,7 @@ void free_selector(int sel)
    : "a" (1),
      "b" (sel)
 
-   : "%eax", 
-     "%ebx", 
-     "%ecx", 
+   : "%ecx", 
      "%edx", 
      "%esi", 
      "%edi"
