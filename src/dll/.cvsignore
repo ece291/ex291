@@ -1,2 +1,4 @@
 buildfre.log 
 *.sw* 
+obj 
+objfre 
