@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: dispatch.c,v 1.10 2001/04/07 08:04:15 pete Exp $
+   $Id: dispatch.c,v 1.11 2001/04/10 06:18:01 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -88,8 +88,10 @@ VOID Extra291Dispatch(VOID)
 	*SocketSettings->LastError = WSAGetLastError();
     } else {
 	setEAX(retval);
-	pName->Port = in_Name.sin_port;
-	pName->Address = in_Name.sin_addr.s_addr;
+	if(pName) {
+	    pName->Port = in_Name.sin_port;
+	    pName->Address = in_Name.sin_addr.s_addr;
+	}
     }
 
     break;
@@ -187,8 +189,10 @@ VOID Extra291Dispatch(VOID)
 	*SocketSettings->LastError = WSAGetLastError();
     } else {
 	setEAX(0);
-	pName->Port = in_Name.sin_port;
-	pName->Address = in_Name.sin_addr.s_addr;
+	if(pName) {
+	    pName->Port = in_Name.sin_port;
+	    pName->Address = in_Name.sin_addr.s_addr;
+	}
     }
 
     break;
@@ -215,8 +219,10 @@ VOID Extra291Dispatch(VOID)
 	*SocketSettings->LastError = WSAGetLastError();
     } else {
 	setEAX(0);
-	pName->Port = in_Name.sin_port;
-	pName->Address = in_Name.sin_addr.s_addr;
+	if(pName) {
+	    pName->Port = in_Name.sin_port;
+	    pName->Address = in_Name.sin_addr.s_addr;
+	}
     }
 
     break;
@@ -342,8 +348,10 @@ VOID Extra291Dispatch(VOID)
 	*SocketSettings->LastError = WSAGetLastError();
     } else {
 	setEAX(retval);
-	pFrom->Port = in_From.sin_port;
-	pFrom->Address = in_From.sin_addr.s_addr;
+	if(pFrom) {
+	    pFrom->Port = in_From.sin_port;
+	    pFrom->Address = in_From.sin_addr.s_addr;
+	}
     }
 
     break;
