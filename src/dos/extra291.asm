@@ -28,7 +28,7 @@
 ; Any calls will be first handled here, and then redirected to the DLL. Some
 ; calls need special processing in both the DLL and here.
 ;
-; $Id: extra291.asm,v 1.5 2001/01/10 07:12:03 pete Exp $
+; $Id: extra291.asm,v 1.6 2001/03/20 04:47:40 pete Exp $
 %include "nasm_bop.inc"
 
 %macro printstr 1
@@ -695,7 +695,7 @@ Do_TSR_Load
 	push	cs
 	pop	ds
 	printstr unregister
-	jmp 	short .Terminate
+	jmp 	.Terminate
 
 .install:
 	; parse EX291 environment variable
@@ -704,15 +704,64 @@ Do_TSR_Load
 	jz	.register_dll
 
 	printstr errorBadEnv
-	jmp	short .Terminate
+	jmp	.Terminate
 
 .register_dll:
+	; Load DLL from same directory as program
+	; first copy full pathname of program from environment
+	mov	di, 80h
+	mov	ah, 51h
+	int	21h			; get Program Segment Prefix
+
+	mov	es, bx
+	mov	ax, [es:002Ch]		; PSP:002Ch = environment's segment
+	mov	es, ax
+
+	; Scan until we reach the end of the environment data (two 0's)
+	mov	si, -1
+.findendenv
+	inc	si
+	cmp	byte [es:si], 0
+	jnz	.findendenv
+	inc	si
+	cmp	byte [es:si], 0
+	jnz	.findendenv
+
+	; Copy zero-terminated pathname from there+3 to temporary buffer
+	add	si, 3
+	mov	di, temp_buf
+.argv0copy:
+	mov	al, [es:si]
+	mov	[di], al
+	inc	si
+	inc	di
+	or	al, al
+	jnz	.argv0copy
+
+	; Find trailing slash before the filename
+.findlastslash:
+	cmp	byte [di], '/'
+	je	.lastslashfound
+	cmp	byte [di], '\'
+	je	.lastslashfound
+	cmp	di, temp_buf
+	je	.registerError
+	dec	di
+	jmp	short .findlastslash
+.lastslashfound:
+	inc	di
+
+	; Replace filename with dllName, and terminate
 	push	cs
 	pop	es
+	mov	cx, 15
+	mov	si, dllName
+	rep	movsb
+
 	stc
 	; register Our DLL - From VDD guide for Application Based Intercepts
 	mov 	ax, 0
-	mov 	si, dllName          	;dll name
+	mov 	si, temp_buf          	;dll name
 	mov 	di, dllInitialize	;init routine
 	mov 	bx, dllDispatch	 	;dispatch routine
 	VDD_Register
@@ -820,5 +869,6 @@ Do_TSR_Load
 	int 	21h
 
 	SECTION .bss
+temp_buf
 vesa_info_area	resb	256
 
