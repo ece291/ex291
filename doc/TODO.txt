@@ -6,5 +6,5 @@ Prty  Diff  Description
  1       ?  joystick?
  1       8  network API
  0       ?  sound
- 7       ?  fix bugs (fullscreen keyboard failure, windowed crashes)
+ 7       ?  fix bugs (windowed crashes)
 
