@@ -1,6 +1,6 @@
 /* ex291srv.h -- constant definitions and function prototypes
    Copyright (C) 1999-2000 Wojciech Galazka
-   Copyright (C) 2000 Peter Johnson
+   Copyright (C) 2000-2001 Peter Johnson
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: ex291srv.h,v 1.2 2000/12/18 06:28:00 pete Exp $
+   $Id: ex291srv.h,v 1.3 2001/03/19 08:45:28 pete Exp $
 */
 
 #ifndef __ex291srv_h
@@ -54,6 +54,18 @@
 
 #include "mymutex.h"
 
+#include "vbeafdata.h"
+
+#define VBEAF_GET_MEMORY			0x6001
+#define VBEAF_GET_MODELIST			0x6002
+#define VBEAF_SET_MODE				0x6003
+#define	VBEAF_SET_PALETTE			0x6004
+#define	VBEAF_BITBLT_VIDEO			0x6005
+#define	VBEAF_BITBLT_SYS			0x6006
+#define	VBEAF_SET_CURSOR_SHAPE			0x6007
+#define	VBEAF_SET_CURSOR_POS			0x6008
+#define	VBEAF_SHOW_CURSOR			0x6009
+
 #define GET_MEMORY				0x7001
 #define GET_MODES				0x7002
 #define SET_MODE				0x7003
@@ -87,10 +99,14 @@ HINSTANCE GetInstance(VOID);
 
 BOOL	InitDirectDraw(VOID);
 VOID	CloseDirectDraw(VOID);
-WORD	DDraw_GetFreeMemory(VOID);
-WORD	DDraw_SetMode(int, int, PVOID);
+DWORD	DDraw_GetFreeMemory(VOID);
+BOOL	DDraw_GetModelist(WORD, WORD, DISPATCH_DATA *);
+HRESULT WINAPI	DDraw_GetModelist_Callback(LPDDSURFACEDESC, LPVOID);
+int	DDraw_SetMode(int, int, int);
+WORD	DDraw_SetMode_Old(int, int, PVOID);
 WORD	DDraw_UnSetMode(VOID);
 VOID	DDraw_RefreshScreen(VOID);
+int	DDraw_BitBltSys(PVOID, DISPATCH_DATA *);
 
 BOOL	InitMyWindow(HINSTANCE, int, int);
 VOID	CloseMyWindow(VOID);
@@ -126,6 +142,8 @@ void	LogMessage(const char *, ...);
 char *	_m_strtime(char *);
 
 VOID Copy32To24(PVOID, PVOID, int, int);
+VOID Copy32To24_pitched(PVOID, PVOID, int, int, int, int, int);
+VOID Copy24To32_pitched(PVOID, PVOID, int, int, int, int, int);
 
 char ttoupper(char c);
 char tisalpha(char c);

@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mywindow.c,v 1.6 2001/02/28 20:35:27 pete Exp $
+   $Id: mywindow.c,v 1.7 2001/03/19 08:45:28 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -31,8 +31,13 @@ static int windowHeight;
 
 extern PBYTE WindowedMode;
 
+static BOOL WindowReady = FALSE;
+
 BOOL InitMyWindow(HINSTANCE hInstance, int width, int height)
 {
+	if(WindowReady)
+		return FALSE;
+
 	windowWidth = width;
 	windowHeight = height;
 
@@ -44,19 +49,28 @@ BOOL InitMyWindow(HINSTANCE hInstance, int width, int height)
 		return FALSE;
 	if(WaitForSingleObject(childEvent, 2000) == WAIT_TIMEOUT)
 		return FALSE;
+	WindowReady = TRUE;
 	return TRUE;
 }
 
 VOID CloseMyWindow(VOID)
 {
+	if(!WindowReady)
+		return;
+
 	PostMessage(hWnd, WM_CLOSE, 0, 0);
 	WaitForSingleObject(childEvent, 2000);
 	if(hWindowThread)
 		CloseHandle(hWindowThread);
+
+	WindowReady = FALSE;
 }
 
 HWND GetMyWindow(VOID)
 {
+	if(!WindowReady)
+		return 0;
+
 	return hWnd;
 }
 

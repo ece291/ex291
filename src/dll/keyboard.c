@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: keyboard.c,v 1.4 2001/01/10 05:56:08 pete Exp $
+   $Id: keyboard.c,v 1.5 2001/03/19 08:45:28 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -37,11 +37,16 @@ static INT KeyboardIRQpic;
 static BYTE KeyboardIRQline;
 static WORD KeyboardPort;
 
+static BOOL KeyboardReady = FALSE;
+
 BOOL InitKey(VOID)
 {
 	VDD_IO_HANDLERS kbIOHandlers = {KeyInIO, NULL, NULL, NULL,
 		KeyOutIO, NULL, NULL, NULL};
-	
+
+	if(KeyboardReady)
+		return FALSE;
+
 	keyMutex = CreateMutex(NULL, TRUE, NULL);
 	if(!keyMutex)
 		return FALSE;
@@ -63,12 +68,16 @@ BOOL InitKey(VOID)
 	}
 
 	//LogMessage("Initialized keyboard");
+	KeyboardReady = TRUE;
 
 	return TRUE;
 }
 
 VOID CloseKey(VOID)
 {
+	if(!KeyboardReady)
+		return;
+
 	switch(WaitForSingleObject(keyMutex, 500L))
 	{
 	case WAIT_OBJECT_0:
@@ -82,12 +91,16 @@ VOID CloseKey(VOID)
 	CloseHandle(keyMutex);
 
 	//LogMessage("Shut down keyboard");
+	KeyboardReady = FALSE;
 }
 
 VOID AddKey(LONG key, BOOL Break)
 {
 	int scancode;
 	int count = 1;
+
+	if(!KeyboardReady)
+		return;
 
 	scancode = (key >> 16) & 0xff;
 
@@ -135,6 +148,9 @@ VOID AddKey(LONG key, BOOL Break)
 int GetNextKey(VOID)
 {
 	int RetVal = 0;
+
+	if(!KeyboardReady)
+		return 0;
 
 	switch(WaitForSingleObject(keyMutex, INFINITE))
 	{

@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mouse.c,v 1.3 2001/01/09 22:42:47 pete Exp $
+   $Id: mouse.c,v 1.4 2001/03/19 08:45:28 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -40,8 +40,13 @@ static HANDLE mouseMutex;
 static INT MouseIRQpic;
 static BYTE MouseIRQline;
 
+static BOOL MouseReady = FALSE;
+
 BOOL InitMouse(VOID)
 {
+	if(MouseReady)
+		return FALSE;
+
 	mouseMutex = CreateMutex(NULL, TRUE, NULL);
 	if(!mouseMutex)
 		return FALSE;
@@ -58,23 +63,32 @@ BOOL InitMouse(VOID)
 	}
 
 //	LogMessage("Initialized mouse");
+	MouseReady = TRUE;
 
 	return TRUE;
 }
 
 VOID CloseMouse(VOID)
 {
+	if(!MouseReady)
+		return;
+
 	CloseHandle(mouseMutex);
 //	LogMessage("Shut down mouse");
+	MouseReady = FALSE;
 }
 
 VOID ShowMouse(VOID)
 {
+	if(!MouseReady)
+		return;
 	ShowCursor(TRUE);
 }
 
 VOID HideMouse(VOID)
 {
+	if(!MouseReady)
+		return;
 	ShowCursor(FALSE);
 }
 
@@ -84,9 +98,9 @@ VOID GetMousePosition(USHORT *button, USHORT *column, USHORT *row)
 	USHORT bm;
 
 	// Get cursor position
-	if(!GetCursorPos(&point))
+	if(!MouseReady || !GetCursorPos(&point))
 	{
-		button = 0; column = 0; row = 0;
+		*button = 0; *column = 0; *row = 0;
 		return;
 	}
 
@@ -107,6 +121,8 @@ VOID GetMousePosition(USHORT *button, USHORT *column, USHORT *row)
 
 VOID SetMousePosition(USHORT column, USHORT row)
 {
+	if(!MouseReady)
+		return;
 /*	INPUT input;
 
 	memset(&input, 0, sizeof(INPUT));
@@ -124,6 +140,9 @@ VOID SetHorizontalMouseRange(USHORT min, USHORT max)
 {
 	RECT rect;
 
+	if(!MouseReady)
+		return;
+
 	if(!GetClipCursor(&rect))
 		return;
 
@@ -139,6 +158,9 @@ VOID SetVerticalMouseRange(USHORT min, USHORT max)
 {
 	RECT rect;
 
+	if(!MouseReady)
+		return;
+
 	if(!GetClipCursor(&rect))
 		return;
 
@@ -152,11 +174,17 @@ VOID SetVerticalMouseRange(USHORT min, USHORT max)
 
 VOID SetMouseCallbackMask(USHORT mask)
 {
+	if(!MouseReady)
+		return;
+
 	CallbackMask = mask;
 }
 
 VOID DoMouseCallback(USHORT condition, UINT keys, USHORT column, USHORT row)
 {
+	if(!MouseReady)
+		return;
+
 	// is it a global callback condition?
 	if ((condition & CallbackMask) == 0)
 		return;
@@ -210,6 +238,14 @@ VOID DoMouseCallback(USHORT condition, UINT keys, USHORT column, USHORT row)
 
 VOID GetCallbackInfo(USHORT *cond, USHORT *bstate, USHORT *col, USHORT *row)
 {
+	if(!MouseReady) {
+		*cond = 0;
+		*bstate = 0;
+		*col = 0;
+		*row = 0;
+		return;
+	}
+
 	//LogMessage("GetCallbackInfo start");
 	switch(WaitForSingleObject(mouseMutex, INFINITE))
 	{
