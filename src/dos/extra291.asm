@@ -28,7 +28,7 @@
 ; Any calls will be first handled here, and then redirected to the DLL. Some
 ; calls need special processing in both the DLL and here.
 ;
-; $Id: extra291.asm,v 1.13 2001/03/26 09:15:22 pete Exp $
+; $Id: extra291.asm,v 1.14 2001/03/29 23:19:33 pete Exp $
 %include "nasm_bop.inc"
 
 ;; dispatch what, where
@@ -55,14 +55,17 @@
 
 %macro mutex_lock 1
 	push	ax
-	xor	al, al
-	mov	ah, 1
+	push	bx
+	xor	bl, bl
+	mov	bh, 1
 %%loop:
-	cmpxchg	[%1], ah
+	cmpxchg	[%1], bh
 	jz	%%done
-;	hlt
+	mov	ax, 1680h		; [DPMI 1.0] Release Current Timeslice
+	int	2Fh
 	jmp	short %%loop
 %%done:
+	pop	bx
 	pop	ax
 %endmacro
 
