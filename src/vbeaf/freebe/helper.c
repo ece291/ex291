@@ -77,7 +77,7 @@ void trace_printf(char *msg, ...)
 	       break;
 
 	    case 'c':
-	       c = va_arg(ap, char);
+	       c = va_arg(ap, int);
 	       trace_putc(c);
 	       break;
 

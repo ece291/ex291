@@ -4,13 +4,13 @@
 # Based on FreeBE/AF makefile.  The freebe/ subdirectory contains the FreeBE/AF
 #  build tools and helper functions.
 #
-# $Id: Makefile,v 1.4 2001/03/01 17:09:25 pete Exp $
+# $Id: Makefile,v 1.5 2001/12/12 06:08:23 pete Exp $
 
 TARGETDIR = ../../bin
 
 TARGETS = $(TARGETDIR)/vbeaf.drv
 
-CFLAGS = -O2 -mpentium -fomit-frame-pointer -Wall -Werror
+CFLAGS = -O -march=pentiumpro -fomit-frame-pointer -Wall -Werror
 
 IFLAGS = -Ifreebe
 

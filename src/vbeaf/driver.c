@@ -1,7 +1,7 @@
 /* driver.c -- EX291 VBE/AF driver implementation file.
    Copyright (C) 2001 Peter Johnson
 
-   $Id: driver.c,v 1.1 2001/03/19 01:09:31 pete Exp $
+   $Id: driver.c,v 1.2 2001/12/12 06:08:23 pete Exp $
 */
 
 #include <pc.h>
@@ -240,13 +240,13 @@ int InitDriver(AF_DRIVER *af)
     af->TotalMemory = d.i[0];
 
     /* allocate real-mode callback for mode callback */
-    __asm__ __volatile__ ("
-	pushw	%%ds		\n
-	movl	%%cs, %%eax	\n
-	movl	%%eax, %%ds	\n
-	movw	$0x303, %%ax	\n
-	int	$0x31		\n
-	popw	%%ds		\n"
+    __asm__ __volatile__ (
+	"pushw	%%ds		\n"
+	"movl	%%cs, %%eax	\n"
+	"movl	%%eax, %%ds	\n"
+	"movw	$0x303, %%ax	\n"
+	"int	$0x31		\n"
+	"popw	%%ds		\n"
     : "=c" (rmcb_seg), "=d" (rmcb_off)
     : "S" (&mode_callback), "D" (&r)
     : "ax"
