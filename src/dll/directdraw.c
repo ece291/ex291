@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: directdraw.c,v 1.7 2001/03/19 17:22:26 pete Exp $
+   $Id: directdraw.c,v 1.8 2001/03/19 19:09:18 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -145,7 +145,7 @@ BOOL DDraw_GetModelist(WORD cb_seg, WORD cb_off, DISPATCH_DATA *data)
 	if(mldata.truecolor_modes[i].is32)
 	    data->s[0] = 24;
 	data->s[1] = (USHORT)mldata.truecolor_modes[i].width;
-	data->s[2] = (USHORT)mldata.truecolor_modes[i].width;
+	data->s[2] = (USHORT)mldata.truecolor_modes[i].height;
 	data->s[3] = 1;
 	data->i[0] = 0;
 	data->i[1] = 0;
