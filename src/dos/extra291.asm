@@ -28,7 +28,7 @@
 ; Any calls will be first handled here, and then redirected to the DLL. Some
 ; calls need special processing in both the DLL and here.
 ;
-; $Id: extra291.asm,v 1.3 2001/01/09 22:39:15 pete Exp $
+; $Id: extra291.asm,v 1.4 2001/01/10 00:56:13 pete Exp $
 %include "nasm_bop.inc"
 
 %macro printstr 1
@@ -169,6 +169,7 @@ Interrupt10_Handler
 
 .Supplemental291API:
 	dispatchAPI	00h, .GetSupplementalInfo
+	dispatchAPI	01h, near .GetSettings
 	dispatchAPI	02h, near .SetVBEMode
 	dispatchAPI	03h, near .UnSetVBEMode
 	dispatchAPI	04h, near .RefreshScreen
@@ -180,7 +181,7 @@ Interrupt10_Handler
 	mov	dword [es:di+VESASupp.Signature+4], '291_'
 	mov	word [es:di+VESASupp.Version], 0100h			; Version Number
 	xor	ax, ax
-	mov	byte [es:di+VESASupp.SubFunc], 00011101b		; Subfunction listing
+	mov	byte [es:di+VESASupp.SubFunc], 00011111b		; Subfunction listing
 	mov	byte [es:di+VESASupp.SubFunc+1], al
 	mov	word [es:di+VESASupp.SubFunc+2], ax
 	mov	word [es:di+VESASupp.SubFunc+4], ax
@@ -213,6 +214,17 @@ Interrupt10_Handler
 	mov	word [es:di+VESASupp.Reserved+14], ax
 	mov	ax, [cs:dllHandle]
 	mov	word [es:di+VESASupp.Reserved+16], ax
+
+	; Indicate success to caller
+	mov	ax, 004Fh
+	popf
+	retf	2
+
+.GetSettings:
+	mov	bl, [cs:Keyboard_INT]
+	mov	bh, [cs:Keyboard_IRQ]
+	mov	cx, [cs:dllHandle]
+	mov	dx, [cs:Keyboard_Port]
 
 	; Indicate success to caller
 	mov	ax, 004Fh
