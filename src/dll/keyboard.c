@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: keyboard.c,v 1.3 2001/01/09 22:42:47 pete Exp $
+   $Id: keyboard.c,v 1.4 2001/01/10 05:56:08 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -35,6 +35,7 @@ extern PWORD Keyboard_Port;
 
 static INT KeyboardIRQpic;
 static BYTE KeyboardIRQline;
+static WORD KeyboardPort;
 
 BOOL InitKey(VOID)
 {
@@ -47,7 +48,9 @@ BOOL InitKey(VOID)
 	Q_Init(&keyQueue);
 	ReleaseMutex(keyMutex);
 
-	kbPorts.First = *Keyboard_Port; kbPorts.Last = *Keyboard_Port;
+	KeyboardPort = *Keyboard_Port;
+
+	kbPorts.First = KeyboardPort; kbPorts.Last = KeyboardPort;
 	if(!VDDInstallIOHook(GetInstance(), 1, &kbPorts, &kbIOHandlers))
 		return FALSE;
 
@@ -155,7 +158,7 @@ int GetNextKey(VOID)
 
 VOID KeyInIO(WORD iport, BYTE *data)
 {
-	if(iport == kbPorts.First)
+	if(iport == KeyboardPort)
 		*data = (BYTE)GetNextKey();
 	else
 		*data = 0xFF;
