@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: directdraw.c,v 1.12.2.1 2001/04/25 04:08:57 pete Exp $
+   $Id: directdraw.c,v 1.12.2.2 2001/04/25 22:19:18 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -616,7 +616,15 @@ VOID VBEAF_BitBltSys(DISPATCH_DATA *data)
     destRect.left = data->i[5];
     destRect.top = data->i[6];
     destRect.right = data->i[5] + data->i[3];
+    if(destRect.right > screenRect.right) {
+	srcRect.right -= destRect.right-screenRect.right;
+	destRect.right = screenRect.right;
+    }
     destRect.bottom = data->i[6] + data->i[4];
+    if(destRect.bottom > screenRect.bottom) {
+	srcRect.bottom -= destRect.bottom-screenRect.bottom;
+	destRect.bottom = screenRect.bottom;
+    }
 
     // modify surface parameters
     hr = IDirectDrawSurface3_SetSurfaceDesc(pDDSBack, &ddsd, 0);
