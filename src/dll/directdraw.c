@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: directdraw.c,v 1.9 2001/03/20 03:33:43 pete Exp $
+   $Id: directdraw.c,v 1.10 2001/03/20 03:35:38 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -682,10 +682,10 @@ VOID DDraw_UpdateWindow(RECT *r)
     srcRect = *r;
     OffsetRect(r, p.x, p.y);
 
-    LogMessage("source rect: L=%d, T=%d, R=%d, B=%d", srcRect.left,
+/*  LogMessage("source rect: L=%d, T=%d, R=%d, B=%d", srcRect.left,
 	srcRect.top, srcRect.right, srcRect.bottom);
     LogMessage("window rect: L=%d, T=%d, R=%d, B=%d", r->left, r->top,
-	r->right, r->bottom);
+	r->right, r->bottom);*/
     hr = IDirectDrawSurface3_Blt(pDDSPrimary, r, pDDSPrimarySave, &srcRect,
 	DDBLT_ASYNC, NULL);
     if(hr != DD_OK) {
