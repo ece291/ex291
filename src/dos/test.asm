@@ -1,3 +1,7 @@
+; Protected Mode EX291 Test
+;  By Peter Johnson, 2000
+;
+; $Id: test.asm,v 1.2 2000/12/18 06:28:00 pete Exp $
 %include "lib291.inc"
 
 	BITS 32

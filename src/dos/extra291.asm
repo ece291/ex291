@@ -30,8 +30,7 @@
 ;
 ;  ";;;;" meens code that is not neccessary
 ;
-; Defining SAVESTRING is now recommended
-;
+; $Id: extra291.asm,v 1.2 2000/12/18 06:28:00 pete Exp $
 %include "nasm_bop.inc"
 
 %macro printstr 1

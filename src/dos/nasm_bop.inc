@@ -1,4 +1,6 @@
 ; BOP Macros 	 from Microsoft Include File ISVBOP 
+; Converted to NASM by Peter Johnson, 2000
+; $Id: nasm_bop.inc,v 1.2 2000/12/18 06:28:00 pete Exp $
 
 ; VDD_Register
 ;  PURPOSE:

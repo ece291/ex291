@@ -1,3 +1,8 @@
+# Sources for EX291 VDD
+#  By Peter Johnson, 2000
+#
+# $Id: SOURCES,v 1.2 2000/12/18 06:28:00 pete Exp $
+
 TARGETNAME=ex291srv
 TARGETPATH=.\objfre
 TARGETTYPE=DYNLINK

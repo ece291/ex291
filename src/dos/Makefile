@@ -1,3 +1,8 @@
+# Makefile for EX291 DOS driver and test program
+#  By Peter Johnson, 2000
+#
+# $Id: Makefile,v 1.2 2000/12/18 06:28:00 pete Exp $
+
 ifndef PMODELIB
 all:
 	@echo Please set PMODELIB to point to the ECE291 Protected Mode Library.

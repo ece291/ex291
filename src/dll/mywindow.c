@@ -13,7 +13,10 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software Foundation,
-   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+   $Id: mywindow.c,v 1.2 2000/12/18 06:28:00 pete Exp $
+*/
 
 #include "ex291srv.h"
 #include <ddrawex.h>

@@ -5,8 +5,10 @@
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  */
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
+   $Id: author.h,v 1.2 2000/12/18 06:28:00 pete Exp $
+*/
 
 /*---------------------------------------------------*/
 /* the following section defines values used in the  */

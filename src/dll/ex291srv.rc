@@ -6,7 +6,10 @@
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  */
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+   $Id: ex291srv.rc,v 1.2 2000/12/18 06:28:00 pete Exp $
+*/
 
 #include <windows.h>
 
