@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mouse.c,v 1.5 2001/03/19 09:32:49 pete Exp $
+   $Id: mouse.c,v 1.6 2001/03/19 15:48:59 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -82,14 +82,20 @@ VOID ShowMouse(VOID)
 {
     if(!MouseReady)
 	return;
-    ShowCursor(TRUE);
+    if(*WindowedMode)
+	return;
+
+    while(ShowCursor(TRUE) <= 0) {}
 }
 
 VOID HideMouse(VOID)
 {
     if(!MouseReady)
 	return;
-    ShowCursor(FALSE);
+    if(*WindowedMode)
+	return;
+
+    while(ShowCursor(FALSE) >= -1) {}
 }
 
 VOID GetMousePosition(USHORT *button, USHORT *column, USHORT *row)
@@ -121,6 +127,8 @@ VOID GetMousePosition(USHORT *button, USHORT *column, USHORT *row)
 VOID SetMousePosition(USHORT column, USHORT row)
 {
     if(!MouseReady)
+	return;
+    if(*WindowedMode)
 	return;
 /*  INPUT input;
 
