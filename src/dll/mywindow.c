@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: mywindow.c,v 1.9 2001/03/19 17:04:32 pete Exp $
+   $Id: mywindow.c,v 1.10 2001/03/19 17:20:24 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -33,6 +33,8 @@ extern PBYTE WindowedMode;
 extern BOOL MouseHidden;
 
 static BOOL WindowReady = FALSE;
+
+BOOL WindowActive = FALSE;
 
 BOOL InitMyWindow(HINSTANCE hInstance, int width, int height)
 {
@@ -225,6 +227,11 @@ LONG APIENTRY MyWndProc(HWND hWnd, UINT message, UINT wParam, LONG lParam)
 		DDraw_RefreshScreen();	// FIXME: only update needed
 		EndPaint(hWnd, &ps);
 	    }
+	    return 0;
+
+	// Keep track of whether we're active or not
+	case WM_ACTIVATEAPP:
+	    WindowActive = (BOOL)wParam;
 	    return 0;
     }
     return (DefWindowProc(hWnd, message, wParam, lParam));

@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: directdraw.c,v 1.5 2001/03/19 09:32:49 pete Exp $
+   $Id: directdraw.c,v 1.6 2001/03/19 17:20:24 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -39,6 +39,8 @@ extern PBYTE WindowedMode;
 
 extern BOOL usingVBEAF;
 extern int VBEAF_depth;
+
+extern BOOL WindowActive;
 
 typedef struct MODELIST_DATA
 {
@@ -475,6 +477,12 @@ VOID DDraw_RefreshScreen(VOID)
 
     if(!pDDSPrimary || !pDDSBack)
 	return;
+
+    if(!*WindowedMode && !WindowActive)
+	return 0;
+
+    IDirectDrawSurface3_Restore(pDDSPrimary);
+
 //LogMessage("Start Refresh");	
     if(!samePixelFormat) {
 //	LogMessage("Starting 32 to 24 conversion");
@@ -523,6 +531,11 @@ int DDraw_BitBltSys(PVOID source, DISPATCH_DATA *data)
 
     if(!pDDSPrimary || !pDDSBack)
 	return -1;
+
+    if(!*WindowedMode && !WindowActive)
+	return 0;
+
+    IDirectDrawSurface3_Restore(pDDSPrimary);
 
     memset(&ddsd, 0, sizeof(ddsd));
     ddsd.dwSize = sizeof(ddsd);
