@@ -15,7 +15,7 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-   $Id: directdraw.c,v 1.6 2001/03/19 17:20:24 pete Exp $
+   $Id: directdraw.c,v 1.7 2001/03/19 17:22:26 pete Exp $
 */
 
 #include "ex291srv.h"
@@ -479,7 +479,7 @@ VOID DDraw_RefreshScreen(VOID)
 	return;
 
     if(!*WindowedMode && !WindowActive)
-	return 0;
+	return;
 
     IDirectDrawSurface3_Restore(pDDSPrimary);
 
